@@ -14,7 +14,7 @@ export function activeGroup(route){for(const [name,list] of Object.entries(group
 
 /** Human title for a route, used by the top bar. */
 export function routeTitle(route,state,t){
- const own={dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review')};
+ const own={dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review'),account:u(state,'account')};
  if(own[route])return own[route];
  const core={learn:'learn',test:'test',results:'test',favorites:'favorites',history:'history',settings:'settings',notifications:'notifications',grammar:'grammar',widget:'widget',details:'details'};
  return core[route]?t(core[route]):t('p.'+route);
@@ -34,12 +34,12 @@ export function sidebar(state,route,{t,day}){
   <div class="sidebar-foot">
    <a class="sidebar-today" href="#learn" data-tooltip="${esc(u(state,'dayTrack'))}"><span class="mini-ring" style="--p:${total?done/total*100:0}%"><span class="num">${done}</span></span><span class="nav-label"><strong>${u(state,'dayTrack')}</strong><small class="num">${done} / ${total}</small></span></a>
    ${link('tools','dots',u(state,'more'),{current:route==='tools'})}
-   ${link('settings','settings',t('settings'),{current:['settings','notifications','widget'].includes(route)})}
+   ${link('settings','settings',t('settings'),{current:['settings','notifications','widget','account'].includes(route)})}
   </div>
  </aside>`;
 }
 
-export function topbar(state,route,{t,title,dateText}){
+export function topbar(state,route,{t,title,dateText,sync=null}){
  const s=streak(state),dark=state.settings.theme!=='light';
  return `<header class="topbar">
   <button class="icon-btn mobile-menu" type="button" data-action="menu" aria-expanded="false" aria-controls="sidebar-navigation" aria-label="${esc(u(state,'menu'))}">${icon('menu-2')}</button>
@@ -49,6 +49,7 @@ export function topbar(state,route,{t,title,dateText}){
    <a class="topbar-search" href="#library" data-action="focus-search">${icon('search')}<span>${u(state,'searchWords')}</span><kbd>/</kbd></a>
    ${iconButton('search',u(state,'searchWords'),{href:'#library',kind:'topbar-search-icon'})}
    ${s?`<a class="streak-chip" href="#calendar" aria-label="${s} — ${esc(t('streak'))}" data-tooltip="${esc(t('streak'))}">${icon('flame')}<span class="num">${s}</span></a>`:''}
+   ${sync||''}
    ${iconButton(dark?'sun':'moon',u(state,dark?'toLight':'toDark'),{action:'theme-toggle'})}
    <a class="icon-btn" href="#notifications" aria-label="${esc(t('notifications'))}" data-tooltip="${esc(t('notifications'))}">${icon('bell')}${state.settings.notifications?'<i class="dot" aria-hidden="true"></i>':''}</a>
   </div>

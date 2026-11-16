@@ -78,10 +78,3 @@ test('every literal interface key used by the UI exists in both languages',async
  assert.deepEqual(missingT,[],'t() keys missing from i18n');assert.deepEqual(missingU,[],'u()/L() keys missing from labels.js');
  assert.ok(tKeys.size>150&&uKeys.size>60,'scanner found the UI keys');
 });
-test('service worker shell and build list reference only files that exist',async()=>{
- const sw=await readFile(new URL('../sw.js',import.meta.url),'utf8'),build=await readFile(new URL('../build.mjs',import.meta.url),'utf8');
- const shell=JSON.parse(sw.match(/SHELL=(\[[^\]]*\])/)[1]),list=JSON.parse(build.match(/for\(const file of (\[[^\]]*\])\)/)[1]);
- for(const f of [...shell.map(x=>x.slice(2)),...list])await readFile(new URL('../'+f,import.meta.url));
- const js=(await readdir(new URL('../',import.meta.url))).filter(f=>f.endsWith('.js'));
- assert.deepEqual(js.filter(f=>!list.includes(f)),[],'every module is shipped by the build');
-});

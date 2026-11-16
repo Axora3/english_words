@@ -644,3 +644,48 @@ button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--lin
   .home-rail .rail-section:first-child { grid-row: span 3; border-right: 1px solid var(--line); }
   .home-rail .rail-section:nth-child(2) { border-top: 0; }
 }
+
+/* ============ Account, sync, install, updates ============ */
+.sync-indicator.is-synced, .sync-indicator.is-idle { color: var(--mint-text); }
+.sync-indicator.is-syncing .ui-icon, .sync-indicator.is-pending .ui-icon { color: var(--accent-text); }
+.sync-indicator.is-syncing .ui-icon { animation: breathe 1.2s ease-in-out infinite; }
+.sync-indicator.is-offline, .sync-indicator.is-needs-choice { color: var(--warning-text); }
+.sync-indicator.is-error { color: var(--danger-text); }
+.compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
+.compare-grid > .panel { display: flex; flex-direction: column; gap: var(--s2); }
+.compare-grid h2, .compare-grid h3 { font-size: var(--fs-card); }
+.compare-grid > .panel > .ui-icon { width: 22px; height: 22px; color: var(--accent-text); }
+.auth-panel { display: flex; flex-direction: column; gap: var(--s5); max-width: 560px; }
+.auth-panel .segmented { align-self: flex-start; }
+.auth-form { display: flex; flex-direction: column; gap: var(--s4); }
+.sync-panel { display: flex; flex-direction: column; gap: var(--s4); }
+.sync-head { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }
+.sync-head > div { flex: 1; min-width: 180px; }
+.sync-head h2 { font-size: var(--fs-section); overflow-wrap: anywhere; }
+.first-sync { display: flex; flex-direction: column; gap: var(--s4); border-color: color-mix(in srgb, var(--warning) 45%, var(--line)); }
+.summary-list li { display: flex; justify-content: space-between; gap: var(--s3); padding: 6px 0; font-size: var(--fs-secondary); color: var(--text-2); }
+.summary-list li + li { border-top: 1px solid var(--line); }
+.summary-list b { color: var(--text); }
+.inline-panel { display: flex; align-items: center; gap: var(--s3); flex-wrap: wrap; }
+.inline-panel > .ui-icon { width: 20px; height: 20px; color: var(--text-3); }
+.inline-panel > div:first-of-type { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+.inline-panel small { color: var(--text-3); }
+.backup-list li { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: var(--s3) 0; flex-wrap: wrap; }
+.backup-list li + li { border-top: 1px solid var(--line); }
+.backup-list li > div:first-child { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.backup-list small { display: flex; align-items: center; gap: 6px; color: var(--text-3); }
+.danger-group .group-body { border-color: color-mix(in srgb, var(--danger) 35%, var(--line)); }
+.install-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--s4); padding: var(--s4); }
+.install-steps h3 { display: flex; align-items: center; gap: var(--s2); font-size: var(--fs-secondary); margin-bottom: var(--s2); }
+.install-steps h3 .ui-icon { width: 18px; height: 18px; color: var(--accent-text); }
+.install-steps ol { list-style: decimal; padding-left: var(--s5); display: flex; flex-direction: column; gap: 4px; color: var(--text-2); font-size: var(--fs-caption); }
+.update-banner {
+  position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: calc(var(--s5) + env(safe-area-inset-bottom));
+  display: flex; align-items: center; gap: var(--s3); max-width: calc(100vw - 32px); padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  border-radius: var(--r-lg); background: var(--surface-3); color: var(--text); box-shadow: var(--shadow-3); font-size: var(--fs-secondary); animation: rise var(--d3) var(--ease) both;
+}
+.update-banner > .ui-icon { width: 18px; height: 18px; color: var(--accent-text); }
+@media (max-width: 1023.98px) { .update-banner { bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + var(--s3)); } }
+@media (max-width: 767.98px) { .compare-grid, .install-guide { grid-template-columns: minmax(0, 1fr); } }
+/* Installed PWA: the status bar overlaps content on iOS (black-translucent), keep the top bar clear of it. */
+@media (display-mode: standalone) { .topbar { padding-top: env(safe-area-inset-top); height: calc(var(--topbar-h) + env(safe-area-inset-top)); } }
