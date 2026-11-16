@@ -1,6 +1,6 @@
 // Word-centred screens: learn flow, word detail, review session, daily test, results and word lists.
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {schedule,nextWord,dueWords,scoreTest,dayKey} from './core.js';
 import {familyFor} from './word-family.js';
 import {relatedPhrases} from './collocations.js';
@@ -15,9 +15,9 @@ const statusKey={new:'statusNew',learning:'statusLearning',mastered:'statusMaste
 export function statusBadge(state,id){const s=wordStatus(state,id);return badge(u(state,statusKey[s]),statusTone[s]+' status');}
 
 /** VocabularyRow — compact dictionary line. */
-export function vocabRow(w,state,{t,open='detail',remove=''}){
+export function vocabRow(w,state,{t,open='detail',remove='',meta=null}){
  const saved=state.favorites.includes(w.id);
- return `<li class="vocab-row">${cefr(w.level)}<button type="button" class="vocab-main" data-action="${open}:${w.id}"><span class="vocab-head"><strong lang="en">${esc(w.word)}</strong><span class="vocab-ipa" lang="en">${esc(w.ipa||'')}</span><span class="vocab-pos">${esc(t(w.pos)===w.pos?w.pos:t(w.pos))}</span></span><span class="vocab-meaning" lang="mn">${esc(w.translation)}</span></button><span class="vocab-status">${statusBadge(state,w.id)}</span><span class="vocab-actions">${iconButton('volume',t('pronounce'),{action:'speak:'+w.id})}${iconButton('heart',t(saved?'unsave':'save'),{action:'favorite:'+w.id,pressed:saved,filled:saved,kind:saved?'is-saved':''})}${remove?iconButton('x',t('p.remove'),{action:`p-remove:${remove}|${w.id}`}):''}</span></li>`;
+ return `<li class="vocab-row">${cefr(w.level)}<button type="button" class="vocab-main" data-action="${open}:${w.id}"><span class="vocab-head"><strong lang="en">${esc(w.word)}</strong><span class="vocab-ipa" lang="en">${esc(w.ipa||'')}</span><span class="vocab-pos">${esc(t(w.pos)===w.pos?w.pos:t(w.pos))}</span></span><span class="vocab-meaning" lang="mn">${esc(w.translation)}</span>${meta?`<span class="vocab-meta">${meta(w)}</span>`:''}</button><span class="vocab-status">${statusBadge(state,w.id)}</span><span class="vocab-actions">${iconButton('volume',t('pronounce'),{action:'speak:'+w.id})}${iconButton('heart',t(saved?'unsave':'save'),{action:'favorite:'+w.id,pressed:saved,filled:saved,kind:saved?'is-saved':''})}${remove?iconButton('x',t('p.remove'),{action:`p-remove:${remove}|${w.id}`}):''}</span></li>`;
 }
 export function vocabList(list,state,opts){return `<ul class="vocab-list">${list.map(w=>vocabRow(w,state,opts)).join('')}</ul>`;}
 
@@ -113,9 +113,11 @@ export function resultsView(c){
 export function wordListView(c,saved){
  const {state,t,search,filter,words}=c,L=k=>u(state,k),ids=saved?state.favorites:Object.keys(state.learned);
  const list=words.filter(w=>ids.includes(w.id)&&(!search||`${w.word} ${w.translation}`.toLowerCase().includes(search.toLowerCase()))&&(filter!=='difficult'||state.difficult.includes(w.id)));
+ if(!saved)list.sort((a,b)=>state.learned[b.id].learnedAt-state.learned[a.id].learnedAt);
+ const meta=saved?null:w=>`${L('learnedOnShort')} ${c.dateLabel(state.learned[w.id].learnedAt)} · ${t('nextReview')} ${c.dateLabel(state.learned[w.id].dueAt)}`;
  const tabs=tabLinks([{href:'#library',label:L('dictionaryTab'),ic:'book-2'},{href:'#favorites',label:t('favorites'),ic:'heart',active:saved},{href:'#history',label:L('learnedTab'),ic:'clock',active:!saved},{href:'#collections',label:t('p.collections'),ic:'folders'}],{label:L('vocabulary')});
  const body=!ids.length?emptyState({ic:saved?'heart':'book-2',title:t(saved?'emptySaved':'emptyLearned'),body:t(saved?'emptySavedSub':'emptyLearnedSub'),action:button(L('explore'),{href:'#library',iconEnd:'arrow-right'})})
   :!list.length?emptyState({ic:'search',title:t('noResults'),body:L('clearFilters')})
-  :vocabList(list,state,{t});
+  :vocabList(list,state,{t,meta});
  return `${pageHeader({eyebrow:L('yourWords'),title:t(saved?'favorites':'history'),sub:t(saved?'favoritesSub':'historySub')})}${tabs}<div class="toolbar">${searchInput({id:'search',value:search,placeholder:t('search')})}${segmented([{label:t('all'),action:'filter:all',active:filter==='all',count:ids.length},{label:t('difficult'),action:'filter:difficult',active:filter==='difficult',count:ids.filter(id=>state.difficult.includes(id)).length}],{label:t('search')})}</div><div id="collection-results">${body}</div>`;
 }

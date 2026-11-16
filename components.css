@@ -58,7 +58,6 @@ body.sidebar-collapsed .sidebar-collapse .when-collapsed { display: block; }
     padding: 6px 10px; border-radius: var(--r-sm); background: var(--surface-3); color: var(--text); font-size: var(--fs-label); font-weight: 600; white-space: nowrap; box-shadow: var(--shadow-2); pointer-events: none;
   }
   body.sidebar-collapsed .sidebar-today { position: relative; }
-  body.sidebar-collapsed .review-count-dot { display: block; }
   .mobile-menu, .topbar-brand, .bottom-nav, .nav-scrim { display: none !important; }
 }
 
@@ -320,6 +319,7 @@ a.stat:hover { background: var(--surface-2); }
 .segmented.sm > button { height: 28px; }
 .tab-links { display: flex; gap: var(--s1); border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; margin-top: calc(var(--s2) * -1); }
 .tab-links::-webkit-scrollbar, .segmented::-webkit-scrollbar { display: none; }
+.tab-links.is-scrollable, .chip-filter.is-scrollable, .settings-nav.is-scrollable { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 28px), transparent); }
 .tab-links a { position: relative; display: inline-flex; align-items: center; gap: var(--s2); height: 42px; padding: 0 var(--s3); color: var(--text-2); font-size: var(--fs-secondary); font-weight: 500; white-space: nowrap; transition: color var(--d1); }
 .tab-links a .ui-icon { width: 17px; height: 17px; }
 .tab-links a:hover { color: var(--text); }
@@ -503,6 +503,7 @@ dialog.modal::backdrop { background: var(--overlay); backdrop-filter: blur(3px);
 .vocab-ipa { color: var(--text-3); font-size: var(--fs-caption); }
 .vocab-pos { color: var(--text-3); font-size: var(--fs-label); font-style: italic; }
 .vocab-meaning { color: var(--text-2); font-size: var(--fs-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vocab-meta { grid-column: 1 / -1; color: var(--text-3); font-size: var(--fs-label); }
 .vocab-status { flex: none; width: 104px; display: flex; justify-content: flex-end; }
 .vocab-actions { flex: none; display: flex; }
 .vocab-actions .icon-btn { width: 36px; height: 36px; }

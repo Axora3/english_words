@@ -1,6 +1,6 @@
 // Home: one clear next action, a margin rail with the day's timeline, challenge, goals and course.
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {nextWord,schedule,dueWords,streak,dayKey} from './core.js';
 import {goalProgress} from './study-goals.js';
 import {ensureChallenge,challengeProgress} from './daily-challenge.js';

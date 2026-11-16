@@ -1,9 +1,10 @@
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {polishUI,audioFeedback} from './ui-polish.js';
 import {recordGrammarMistakes} from './mistakes.js';
 import {advancedReminders} from './daily-challenge.js';
+import {updateAchievements} from './achievements.js';
 import {PlatformUI,platformRoutes} from './platform-ui.js';
-import {migrateAdvanced} from './advanced-state.js';
+import {migrateAdvanced,recordStudyTime} from './advanced-state.js';
 import {setCustomWords} from './words.js';
 import { widgetPage } from './widget-ui.js';
 import { buildWidgetScript } from './widget-export.js';
@@ -11,7 +12,7 @@ import {icon} from './icons.js';
 import {sidebar,topbar,bottomNav,routeTitle,brandMark} from './shell.js';
 import {homeView} from './home.js';
 import {learnView,detailView,reviewView,testView,resultsView,wordListView} from './word-ui.js';
-import {button,pageHeader,settingRow,switchControl,selectControl,linkRow,notice,iconTile,badge} from './ui.js';
+import {esc,button,pageHeader,settingRow,switchControl,selectControl,linkRow,notice,iconTile,badge} from './ui.js';
 import { lessons } from './grammar-data.js';
 import { startGrammar, checkGrammar } from './grammar.js';
 import { grammarPage } from './grammar-ui.js';
@@ -20,7 +21,7 @@ import { voicePanel } from './voice-ui.js';
 import { validBackup } from './backup.js';
 import {words} from './words.js';
 import {translator} from './i18n.js';
-import {defaults,emptyState,dayKey,ensureDay,schedule,nextWord,markLearned,dueWords,reviewWord,streak,validateSettings,rescheduleDay,makeTest,scoreTest,notificationEvents} from './core.js';
+import {defaults,emptyState,dayKey,ensureDay,pruneNotified,schedule,nextWord,markLearned,dueWords,reviewWord,streak,validateSettings,rescheduleDay,makeTest,scoreTest,notificationEvents} from './core.js';
 const $=s=>document.querySelector(s), KEY='lexi-v1', UI_KEY='english-words-ui';
 let state=emptyState(),storageFailed=false,recoveryRaw=null;
 try{const raw=localStorage.getItem(KEY);if(raw!==null){const saved=JSON.parse(raw);if(!validBackup(saved))throw Error('invalid');state={...emptyState(),...saved,settings:{...defaults,...saved.settings}};}}catch{storageFailed=true;try{recoveryRaw=localStorage.getItem(KEY);}catch{recoveryRaw='storage unavailable';}}
@@ -33,17 +34,15 @@ let t=translator(state.settings.language),route=location.hash.slice(1).split('/'
 const closeNav=()=>{document.body.classList.remove('nav-open');$('.mobile-menu')?.setAttribute('aria-expanded','false');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.body.classList.contains('nav-open')){closeNav();$('.mobile-menu')?.focus();}document.querySelectorAll('details.dropdown[open]').forEach(d=>{d.open=false;d.querySelector('summary')?.focus();});}});
 document.addEventListener('click',e=>{if(document.body.classList.contains('nav-open')&&!e.target.closest('.sidebar,.mobile-menu'))closeNav();document.querySelectorAll('details.dropdown[open]').forEach(d=>{if(!d.contains(e.target)||e.target.closest('.menu [data-action]'))d.open=false;});});
-const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const byId=id=>words.find(w=>w.id===id);
 const locale=()=>state.settings.language==='mn'?'mn-MN':'en-US';
 const dateLabel=(v,options={month:'short',day:'numeric'})=>{const d=new Date(v);if(state.settings.language==='mn')return `${options.year?d.getFullYear()+' он, ':''}${options.weekday?(options.weekday==='long'?['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба']:['Ня','Да','Мя','Лх','Пү','Ба','Бя'])[d.getDay()]+', ':''}${d.getMonth()+1}-р сарын ${d.getDate()}`;return d.toLocaleDateString(locale(),options);};
 const timeLabel=v=>new Date(v).toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit',hour12:false});
 const today=()=>ensureDay(state,words);
-function persist(){if(recoveryRaw!==null){storageFailed=true;return;}try{localStorage.setItem(KEY,JSON.stringify(state));storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);}}
-function toast(message,error=false){const e=$('#toast');e.innerHTML=`${icon(error?'alert-circle':'circle-check')}<span>${esc(message)}</span>`;e.className='show'+(error?' error':'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.className='',error?12000:4000);}
+function persist({quiet=false}={}){if(recoveryRaw!==null){storageFailed=true;return;}const earned=quiet?[]:updateAchievements(state);try{localStorage.setItem(KEY,JSON.stringify(state));storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);return;}if(earned.length)announce(earned);}
+function announce(earned){const b=earned[0];setTimeout(()=>toast(`${u(state,'achievementUnlocked')}: ${b.target} · ${t('p.'+b.category)}${earned.length>1?` (+${earned.length-1})`:''}`,false,'trophy'),60);}
+function toast(message,error=false,ic=''){const e=$('#toast');e.innerHTML=`${icon(ic||(error?'alert-circle':'circle-check'))}<span>${esc(message)}</span>`;e.className='show'+(error?' error':'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.className='',error?12000:4000);}
 function go(name){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;if(location.hash==='#'+name){route=name.split('/')[0];render();}else location.hash=name;}
-function btn(label,action,kind='primary',extra=''){const k=kind.replace('text-link','ghost');return `<button class="btn ${k}" data-action="${action}" ${extra}>${label}</button>`;}
-function header(title,sub){return pageHeader({title:t(title),sub:t(sub)});}
 function ctx(){return {state,t,byId,words,revealed,voiceResult,platform,timeLabel,dateLabel,countdown,today,reviewSession,reviewResult,result,search,filter,detailId};}
 function render(){
  if(voicePractice.isListening()){voicePractice.stop(true);voiceResult={...voiceResult,status:'stopped'};}
@@ -152,12 +151,12 @@ document.addEventListener('submit',async e=>{e.preventDefault();if(await platfor
  if(['settings-form','notification-form'].includes(e.target.id)){const form=e.target,fd=new FormData(form),old=state.settings,s={...old};for(const [key,val]of fd)s[key]=['dailyTarget','interval'].includes(key)?Number(val):val;for(const input of form.querySelectorAll('input[type="checkbox"]'))s[input.name]=input.checked;if(!validateSettings(s)){$('#settings-error').innerHTML=notice(t('invalidSettings'),{tone:'tone-danger',ic:'alert-triangle'});return;}state.settings=s;if(s.startTime!==old.startTime||s.interval!==old.interval||s.dailyTarget!==old.dailyTarget)rescheduleDay(state,words);settingsDirty=false;persist();if(s.notifications&&!old.notifications&&permission()==='default')await requestPermission();render();toast(t('saved'));}
 });
 document.addEventListener('input',e=>{if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
-document.addEventListener('change',async e=>{if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
+document.addEventListener('change',async e=>{if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(settingsDirty&&!confirm(t('unsaved'))){history.replaceState(null,'','#'+route);return;}settingsDirty=false;route=target.split('/')[0];if(route==='details')detailId=target.split('/')[1]||detailId;revealed=route==='details';search='';filter='all';reviewResult=null;closeNav();render();window.scrollTo(0,0);});
 window.addEventListener('beforeunload',e=>{if(settingsDirty){e.preventDefault();e.returnValue='';}});
-window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const data=JSON.parse(e.newValue);if(validBackup(data)){state=data;migrateAdvanced(state);setCustomWords(state.advanced.customWords);if(!settingsDirty)render();}}catch{}});
+window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const data=JSON.parse(e.newValue);if(validBackup(data)){state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);if(!settingsDirty)render();}}catch{}});
 function downloadFile(data,name,type='application/json'){const url=URL.createObjectURL(new Blob([data],{type}));const link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-const platform=new PlatformUI({state:()=>state,t:()=>t,render,persist,toast,esc,btn,header,dateLabel,speak,go,download:downloadFile,openWord(id){detailId=id;revealed=true;go('details/'+id);}});
+const platform=new PlatformUI({state:()=>state,t:()=>t,render,persist,toast,esc,dateLabel,speak,go,download:downloadFile,openWord(id){detailId=id;revealed=true;go('details/'+id);}});
 window.addEventListener('online',()=>{if(!settingsDirty)render();});window.addEventListener('offline',()=>{if(!settingsDirty)render();});
 let voiceResult={status:'idle'},voiceWordId=null;
 const voicePractice=createSpeechPractice({scope:window,onChange(result){
@@ -169,13 +168,13 @@ window.addEventListener('pagehide',()=>{voicePractice.stop(true);window.speechSy
 let swRegistration=null;
 if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').then(r=>swRegistration=r).catch(()=>{});
 async function notifyTick(){const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};try{if(swRegistration)await swRegistration.showNotification(title,options);else new Notification(title,options);if(state.settings.vibration&&navigator.vibrate)navigator.vibrate([120,60,120]);}catch{toast(t('permissionHelp'),true);}};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
-setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
+setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureDay(state,words);if(!settingsDirty)render();notifyTick();}});
-ensureDay(state,words);persist();render();
+ensureDay(state,words);pruneNotified(state);persist();render();
 
 for(const type of ['dragstart','dragover','drop'])document.addEventListener(type,event=>platform.practice.drag(event));
 
-let lastActive=Date.now(),lastSample=Date.now();for(const name of ['pointerdown','keydown','scroll'])document.addEventListener(name,()=>lastActive=Date.now(),{passive:true});setInterval(()=>{const now=Date.now(),seconds=Math.min(15,(now-lastSample)/1000);lastSample=now;if(!document.hidden&&document.hasFocus()&&now-lastActive<60000){state.advanced.time.push({id:crypto.randomUUID(),at:now,section:route,seconds});persist();}},15000);
+let lastActive=Date.now(),lastSample=Date.now();for(const name of ['pointerdown','keydown','scroll'])document.addEventListener(name,()=>lastActive=Date.now(),{passive:true});setInterval(()=>{const now=Date.now(),seconds=Math.min(15,(now-lastSample)/1000);lastSample=now;if(!document.hidden&&document.hasFocus()&&now-lastActive<60000){recordStudyTime(state,route,seconds,now);persist({quiet:true});}},15000);
 
 document.addEventListener('change',e=>{if(e.target.id==='vocab-file')platform.importer.file(e.target.files[0]);});document.addEventListener('dragover',e=>{if(e.target.closest('#vocab-drop')){e.preventDefault();e.target.closest('#vocab-drop').classList.add('is-over');}});document.addEventListener('dragleave',e=>{if(e.target.closest('#vocab-drop'))e.target.closest('#vocab-drop').classList.remove('is-over');});document.addEventListener('drop',e=>{if(e.target.closest('#vocab-drop')){e.preventDefault();platform.importer.file(e.dataTransfer.files[0]);}});
 
@@ -184,7 +183,7 @@ document.addEventListener('keydown',event=>{if(event.key==='Tab'&&document.body.
 // Keyboard shortcuts: "/" search, Space reveal, 1/2 answer during review.
 document.addEventListener('keydown',event=>{
  const target=event.target,typing=target.closest?.('input,textarea,select,[contenteditable="true"]');if(typing||event.metaKey||event.ctrlKey||event.altKey||document.querySelector('dialog[open]'))return;
- if(event.key==='/'){event.preventDefault();if(route==='dictionary'||route==='library')$('#p-query')?.focus();else{focusSearchNext=true;go('dictionary');}return;}
+ if(event.key==='/'){event.preventDefault();if(route==='dictionary'||route==='library')$('#p-query')?.focus();else{focusSearchNext=true;go('library');}return;}
  const onControl=target.closest?.('button,a,summary,label');
  if((event.key===' '||event.key==='Enter')&&!onControl&&!revealed&&((route==='review'&&reviewSession)||(route==='learn'&&nextWord(state,today())))){event.preventDefault();revealed=true;render();return;}
  if(route==='review'&&reviewSession&&revealed&&['1','2'].includes(event.key)){event.preventDefault();$(`[data-action="review-answer:${event.key==='2'?1:0}"]`)?.click();}

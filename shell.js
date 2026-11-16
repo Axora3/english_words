@@ -1,6 +1,6 @@
 // Application shell: desktop sidebar, top bar and mobile bottom navigation.
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {dueWords,streak} from './core.js';
 import {iconButton,esc} from './ui.js';
 
@@ -46,8 +46,8 @@ export function topbar(state,route,{t,title,dateText}){
   <a class="topbar-brand" href="#dashboard" aria-label="English Words">${brandMark()}</a>
   <div class="topbar-title"><strong>${title}</strong><span class="topbar-date">${dateText}</span></div>
   <div class="topbar-actions">
-   <a class="topbar-search" href="#dictionary" data-action="focus-search">${icon('search')}<span>${u(state,'searchWords')}</span><kbd>/</kbd></a>
-   ${iconButton('search',u(state,'searchWords'),{href:'#dictionary',kind:'topbar-search-icon'})}
+   <a class="topbar-search" href="#library" data-action="focus-search">${icon('search')}<span>${u(state,'searchWords')}</span><kbd>/</kbd></a>
+   ${iconButton('search',u(state,'searchWords'),{href:'#library',kind:'topbar-search-icon'})}
    ${s?`<a class="streak-chip" href="#calendar" aria-label="${s} — ${esc(t('streak'))}" data-tooltip="${esc(t('streak'))}">${icon('flame')}<span class="num">${s}</span></a>`:''}
    ${iconButton(dark?'sun':'moon',u(state,dark?'toLight':'toDark'),{action:'theme-toggle'})}
    <a class="icon-btn" href="#notifications" aria-label="${esc(t('notifications'))}" data-tooltip="${esc(t('notifications'))}">${icon('bell')}${state.settings.notifications?'<i class="dot" aria-hidden="true"></i>':''}</a>

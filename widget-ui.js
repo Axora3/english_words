@@ -1,7 +1,7 @@
 import {words} from './words.js';
 import {createWidgetModel} from './widget-model.js';
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {button,pageHeader,sectionHeader,segmented,badge,notice} from './ui.js';
 
 export function widgetPage(state, {t,esc,timeLabel}, size='medium') {
@@ -9,7 +9,7 @@ export function widgetPage(state, {t,esc,timeLabel}, size='medium') {
   const current=createWidgetModel().view(JSON.parse(JSON.stringify(state)),words), L=k=>u(state,k);
   const native=`<div class="iphone-widget ${size}" role="img" aria-label="${esc(t('widgetPreview'))}">
     <div class="widget-native-header"><span>ENGLISH WORDS</span><small class="num">${current.done}/${current.total}</small></div>
-    ${current.word?`<span class="widget-native-label">${current.word.level} · ${t('newWords')}</span><strong lang="en" class="widget-native-word">${esc(current.word.word)}</strong><span lang="en" class="widget-native-ipa">${esc(current.word.ipa)}</span><span lang="mn" class="widget-native-meaning">${esc(current.word.translation)}</span><div class="widget-native-actions" aria-hidden="true"><span>${icon('volume')}${t('pronounce')}</span>${size==='medium'?`<span>${icon('check')}${t('learned')}</span>`:''}</div>`
+    ${current.word?`<span class="widget-native-label">${esc(current.word.level)} · ${t('newWords')}</span><strong lang="en" class="widget-native-word">${esc(current.word.word)}</strong><span lang="en" class="widget-native-ipa">${esc(current.word.ipa)}</span><span lang="mn" class="widget-native-meaning">${esc(current.word.translation)}</span><div class="widget-native-actions" aria-hidden="true"><span>${icon('volume')}${t('pronounce')}</span>${size==='medium'?`<span>${icon('check')}${t('learned')}</span>`:''}</div>`
     :`<span class="widget-native-label">${t(current.status==='waiting'?'nextWord':'done')}</span><strong class="widget-native-word num">${current.nextAt?timeLabel(current.nextAt):icon('circle-check')}</strong><span class="widget-native-ipa">${t(current.status==='waiting'?'waitingSub':'allDoneSub')}</span>`}
   </div>`;
   return `<a class="back-link" href="#settings">${icon('arrow-left')}<span>${t('settings')}</span></a>${pageHeader({eyebrow:'Scriptable · iPhone',title:t('widgetTitle'),sub:t('widgetSub')})}

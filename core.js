@@ -30,3 +30,6 @@ export function notificationEvents(state,day,now=Date.now()){
  if(state.settings.testNotifications&&!state.tests.some(t=>dayKey(new Date(t.finishedAt))===key)&&Object.keys(state.learned).length)events.push({key:`${key}:test`,type:'test',at:atTime(new Date(now),state.settings.testTime)});
  return events.filter(e=>e.at<=now&&now-e.at<60000&&!state.notified.includes(e.key));
 }
+
+/** Drops delivered-notification keys dated before yesterday. Keys without a date are kept. */
+export function pruneNotified(state,now=new Date()){const y=new Date(now);y.setDate(y.getDate()-1);const keep=dayKey(y);state.notified=state.notified.filter(key=>{const d=key.match(/\d{4}-\d{2}-\d{2}/)?.[0];return !d||d>=keep;});return state.notified;}

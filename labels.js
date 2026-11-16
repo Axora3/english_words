@@ -65,6 +65,6 @@ export const uiLabels={
  accountGroup:['App & data','Апп ба өгөгдөл'],
  // misc
  close:['Close','Хаах'],data:['Your data','Таны өгөгдөл'],studyGoals:['Study goals','Суралцах зорилго'],
- offlineTitle:['You are offline','Та офлайн байна'],challenge:['Daily challenge','Өдрийн сорилт'],points:['points','оноо'],
+ achievementUnlocked:['Achievement unlocked','Шинэ амжилт'],offlineTitle:['You are offline','Та офлайн байна'],challenge:['Daily challenge','Өдрийн сорилт'],points:['points','оноо'],
 };
 export const u=(state,key)=>uiLabels[key]?.[state.settings.language==='mn'?1:0]??key;

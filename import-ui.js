@@ -1,7 +1,7 @@
 import {previewVocabulary,mergeVocabulary} from './vocabulary-import.js';
 import {setCustomWords} from './words.js';
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {button,pageHeader,sectionHeader,stat,badge,skeleton,notice} from './ui.js';
 export class ImportUI{
  constructor(parent){this.p=parent;this.preview=null;this.loading=false;}

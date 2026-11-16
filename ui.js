@@ -10,15 +10,15 @@ export const pct=(value,total)=>total?Math.max(0,Math.min(100,Math.round(value/t
 export function button(label,{action,href,kind='primary',size='',ic,iconEnd,full,disabled,type,attrs='',title}={}){
  const cls=`btn ${kind}${size?' '+size:''}${full?' full':''}`;
  const inner=`${ic?icon(ic):''}${label?`<span>${label}</span>`:''}${iconEnd?icon(iconEnd):''}`;
- if(href)return `<a class="${cls}" href="${href}"${attr('title',title)} ${attrs}>${inner}</a>`;
- return `<button class="${cls}"${type?` type="${type}"`:''}${action?` data-action="${action}"`:''}${attr('disabled',disabled)}${attr('title',title)} ${attrs}>${inner}</button>`;
+ if(href)return `<a class="${cls}" href="${esc(href)}"${attr('title',title)} ${attrs}>${inner}</a>`;
+ return `<button class="${cls}"${type?` type="${type}"`:''}${action?` data-action="${esc(action)}"`:''}${attr('disabled',disabled)}${attr('title',title)} ${attrs}>${inner}</button>`;
 }
 /** Icon-only control. Always has an accessible name and a tooltip. */
 export function iconButton(ic,label,{action,href,kind='',pressed,attrs='',filled=false}={}){
  const a=`aria-label="${esc(label)}" data-tooltip="${esc(label)}"${pressed===undefined?'':` aria-pressed="${pressed}"`}`;
  const inner=icon(ic,{filled});
- if(href)return `<a class="icon-btn ${kind}" href="${href}" ${a} ${attrs}>${inner}</a>`;
- return `<button class="icon-btn ${kind}" type="button"${action?` data-action="${action}"`:''} ${a} ${attrs}>${inner}</button>`;
+ if(href)return `<a class="icon-btn ${kind}" href="${esc(href)}" ${a} ${attrs}>${inner}</a>`;
+ return `<button class="icon-btn ${kind}" type="button"${action?` data-action="${esc(action)}"`:''} ${a} ${attrs}>${inner}</button>`;
 }
 export function pageHeader({eyebrow='',title,sub='',actions='',back=null}){
  return `<header class="page-header">${back?`<a class="back-link" href="${back.href}">${icon('arrow-left')}<span>${back.label}</span></a>`:''}<div class="page-header-row"><div class="page-header-copy">${eyebrow?`<p class="eyebrow">${eyebrow}</p>`:''}<h1>${title}</h1>${sub?`<p class="page-sub">${sub}</p>`:''}</div>${actions?`<div class="page-actions">${actions}</div>`:''}</div></header>`;
@@ -46,11 +46,11 @@ export function emptyState({ic='book-2',title,body='',action=''}){
 export function notice(body,{tone='',ic='info-circle',role=''}={}){return `<div class="notice ${tone}"${role?` role="${role}"`:''}>${icon(ic)}<div>${body}</div></div>`;}
 /** Segmented control made of buttons; items: [{label,action,active,count}] */
 export function segmented(items,{label='',className=''}={}){
- return `<div class="segmented ${className}" role="group"${label?` aria-label="${esc(label)}"`:''}>${items.map(i=>`<button type="button" class="${i.active?'active':''}" data-action="${i.action}" aria-pressed="${Boolean(i.active)}">${i.ic?icon(i.ic):''}<span>${i.label}</span>${i.count!==undefined?`<b class="num">${i.count}</b>`:''}</button>`).join('')}</div>`;
+ return `<div class="segmented ${className}" role="group"${label?` aria-label="${esc(label)}"`:''}>${items.map(i=>`<button type="button" class="${i.active?'active':''}" data-action="${esc(i.action)}" aria-pressed="${Boolean(i.active)}">${i.ic?icon(i.ic):''}<span>${i.label}</span>${i.count!==undefined?`<b class="num">${i.count}</b>`:''}</button>`).join('')}</div>`;
 }
 /** Tabs as navigation links (route tabs). items: [{href,label,active,ic}] */
 export function tabLinks(items,{label=''}={}){
- return `<nav class="tab-links" aria-label="${esc(label)}">${items.map(i=>`<a href="${i.href}" class="${i.active?'active':''}"${i.active?' aria-current="page"':''}>${i.ic?icon(i.ic):''}<span>${i.label}</span></a>`).join('')}</nav>`;
+ return `<nav class="tab-links" aria-label="${esc(label)}">${items.map(i=>`<a href="${esc(i.href)}" class="${i.active?'active':''}"${i.active?' aria-current="page"':''}>${i.ic?icon(i.ic):''}<span>${i.label}</span></a>`).join('')}</nav>`;
 }
 export function iconTile(ic,hue='accent',{size=''}={}){return `<span class="icon-tile hue-${hue} ${size}">${icon(ic)}</span>`;}
 export function kbd(key){return `<kbd>${esc(key)}</kbd>`;}
@@ -61,7 +61,7 @@ export function settingRow(title,control,{help='',tag='label',ic=''}={}){
 }
 /** Navigation row (link) used in settings and the More directory. */
 export function linkRow(href,title,{help='',ic='',meta='',hue=''}={}){
- return `<a class="link-row" href="${href}">${ic?(hue?iconTile(ic,hue,{size:'sm'}):`<span class="setting-icon">${icon(ic)}</span>`):''}<span class="setting-copy"><strong>${title}</strong>${help?`<small>${help}</small>`:''}</span>${meta?`<span class="link-meta">${meta}</span>`:''}${icon('chevron-right')}</a>`;
+ return `<a class="link-row" href="${esc(href)}">${ic?(hue?iconTile(ic,hue,{size:'sm'}):`<span class="setting-icon">${icon(ic)}</span>`):''}<span class="setting-copy"><strong>${title}</strong>${help?`<small>${help}</small>`:''}</span>${meta?`<span class="link-meta">${meta}</span>`:''}${icon('chevron-right')}</a>`;
 }
 export function switchControl(name,checked,{label=''}={}){
  return `<span class="switch"><input type="checkbox" role="switch" name="${name}"${checked?' checked':''}${label?` aria-label="${esc(label)}"`:''}><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></span>`;

@@ -1,5 +1,5 @@
 import {icon} from './icons.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import { lessons } from './grammar-data.js';
 import { levels, availableLessons, currentLesson, lessonUnlockDate } from './grammar.js';
 import {button,pageHeader,sectionHeader,progressBar,progressRing,cefr,badge,quizOption,feedback,notice,iconTile,pct} from './ui.js';

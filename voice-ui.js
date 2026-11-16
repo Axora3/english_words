@@ -1,6 +1,6 @@
 import {icon} from './icons.js';
 import { recognitionConstructor } from './speech.js';
-import {u} from './premium.js';
+import {u} from './labels.js';
 import {iconTile} from './ui.js';
 
 export function voicePanel(word, result, { t, esc }) {
