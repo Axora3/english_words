@@ -155,7 +155,7 @@ body {
   font: 400 var(--fs-body)/var(--lh-body) var(--font);
   font-feature-settings: 'cv11', 'ss01', 'calt';
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility; overflow-x: hidden;
+  text-rendering: optimizeLegibility; overflow-x: clip;
 }
 h1, h2, h3, h4, p, figure, blockquote, ol, ul, dl, dd, fieldset { margin: 0; }
 ol, ul { padding: 0; list-style: none; }
@@ -199,3 +199,14 @@ strong, b { font-weight: 600; }
 .boot-bar::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: inherit; background: var(--accent); animation: boot-slide 1.1s var(--ease) infinite; }
 @keyframes boot-slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .noscript { padding: var(--s6); text-align: center; }
+
+/* Mobile robustness:
+   - iOS Safari zooms into any focused field under 16px and stays zoomed/shifted afterwards, which
+     made pages look cut off on the left. Touch devices therefore always get 16px form controls.
+   - The page itself can never scroll sideways (clip does not create a scroll container, so sticky
+     headers keep working). */
+html { overflow-x: clip; }
+@supports not (overflow-x: clip) { html, body { overflow-x: hidden; } }
+@media (pointer: coarse), (max-width: 1023.98px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: 16px !important; }
+}
