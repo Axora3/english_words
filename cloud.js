@@ -35,16 +35,17 @@ export const auth={
  async resetPassword(email){return check(await (await need()).auth.resetPasswordForEmail(email,{redirectTo:redirectTo('#account')}));},
  async updatePassword(password){return check(await (await need()).auth.updateUser({password}));},
  async signOut(){const c=await getClient();if(c)check(await c.auth.signOut({scope:'local'}));},
- async deleteAccount(){check(await (await need()).rpc('delete_my_account'));},
+ /** Deletes all English Words data; the login is kept if another app in the project uses it. */
+ async deleteAccount(){return check(await (await need()).rpc('ew_delete_my_account'));},
 };
 
 export const data={
- async fetchState(){const r=check(await (await need()).from('learning_states').select('state,revision,updated_at').maybeSingle());return r?{state:r.state,revision:Number(r.revision),updated_at:r.updated_at}:null;},
- async pushState(state,baseRevision,deviceId=null){const r=check(await (await need()).rpc('push_learning_state',{p_state:state,p_base_revision:baseRevision,p_device_id:deviceId}));return {status:r.status,revision:r.revision===null?null:Number(r.revision),updated_at:r.updated_at};},
- async createBackup(state,reason='manual',label=null){const words=Object.keys(state?.learned||{}).length;check(await (await need()).from('cloud_backups').insert({state,reason,label,words_learned:words}));},
- async listBackups(){return check(await (await need()).from('cloud_backups').select('id,label,reason,words_learned,created_at').order('created_at',{ascending:false}).limit(30));},
- async getBackup(id){return check(await (await need()).from('cloud_backups').select('state').eq('id',id).single()).state;},
- async deleteBackup(id){check(await (await need()).from('cloud_backups').delete().eq('id',id));},
- async profile(){return check(await (await need()).from('profiles').select('display_name,preferred_language,timezone').maybeSingle());},
- async saveProfile(fields){const c=await need(),{data:{user}}=await c.auth.getUser();check(await c.from('profiles').update(fields).eq('id',user.id));},
+ async fetchState(){const r=check(await (await need()).from('ew_learning_states').select('state,revision,updated_at').maybeSingle());return r?{state:r.state,revision:Number(r.revision),updated_at:r.updated_at}:null;},
+ async pushState(state,baseRevision,deviceId=null){const r=check(await (await need()).rpc('ew_push_learning_state',{p_state:state,p_base_revision:baseRevision,p_device_id:deviceId}));return {status:r.status,revision:r.revision===null?null:Number(r.revision),updated_at:r.updated_at};},
+ async createBackup(state,reason='manual',label=null){const words=Object.keys(state?.learned||{}).length;check(await (await need()).from('ew_cloud_backups').insert({state,reason,label,words_learned:words}));},
+ async listBackups(){return check(await (await need()).from('ew_cloud_backups').select('id,label,reason,words_learned,created_at').order('created_at',{ascending:false}).limit(30));},
+ async getBackup(id){return check(await (await need()).from('ew_cloud_backups').select('state').eq('id',id).single()).state;},
+ async deleteBackup(id){check(await (await need()).from('ew_cloud_backups').delete().eq('id',id));},
+ async profile(){return check(await (await need()).from('ew_profiles').select('display_name,preferred_language,timezone').maybeSingle());},
+ async saveProfile(fields){const c=await need(),{data:{user}}=await c.auth.getUser();check(await c.from('ew_profiles').upsert({id:user.id,...fields},{onConflict:'id'}));},
 };

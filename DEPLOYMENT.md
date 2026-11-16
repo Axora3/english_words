@@ -11,10 +11,10 @@ This is the exact path from this repository to a production URL. The steps marke
 ## 1. Create the Supabase project **(you)**
 
 1. At https://supabase.com/dashboard, click **New project**. Name it `english-words`, choose a region close to your users, and set a strong database password. Store that password in your password manager; the app never needs it.
-2. Open **SQL Editor → New query**. Paste the whole of `supabase/migrations/20261117000100_initial_schema.sql` and click **Run**. The migration only creates objects; it never drops or alters existing data. It creates:
-   - the tables `profiles`, `learning_states` and `cloud_backups`, with Row Level Security enabled on all three;
-   - the functions `push_learning_state` and `delete_my_account`;
-   - the triggers that create a profile for each new user and keep at most 30 backups per user.
+2. Open **SQL Editor → New query**. Paste the whole of `supabase/migrations/20261117000100_english_words_schema.sql` and click **Run**. The migration only creates objects; it never drops or alters existing data. It creates:
+   - the tables `ew_profiles`, `ew_learning_states` and `ew_cloud_backups`, with Row Level Security enabled on all three;
+   - the functions `ew_push_learning_state` and `ew_delete_my_account`;
+   - a trigger that keeps at most 30 backups per user. All names start with `ew_` and nothing is attached to `auth.users`, so the file is safe in a project shared with another app (it is installed in the shared "Axora3's Project", ref `wxirsnuyofgkrhjynasl`). Account deletion keeps a login that the other app still uses (`admin_users`).
    If you later install the Supabase CLI, `supabase db push` applies the same file.
 3. **Authentication → URL Configuration:**
    - **Site URL:** your production URL, e.g. `https://english-words.vercel.app`.
@@ -37,7 +37,7 @@ Check the setup locally:
 1. Create an account and confirm the email.
 2. Sign in and choose how to handle this device's progress.
 3. Press **Sync now**.
-4. In the Supabase **Table Editor**, `learning_states` should now have one row for your user. With RLS on, other users can't see it.
+4. In the Supabase **Table Editor**, `ew_learning_states` should now have one row for your user. With RLS on, other users can't see it.
 
 ## 3. Push the code **(you, or ask me to, after reviewing)**
 

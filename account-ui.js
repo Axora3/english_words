@@ -79,6 +79,6 @@ export class AccountUI{
   else if(form.id==='a-password-form'){const p=String(f.get('password')||'');if(p.length<8){this.say(L('passwordHint'),'tone-danger');return true;}await this.run('password',async()=>{await auth.updatePassword(p);this.recovery=false;this.ctx.toast(L('passwordUpdated'));});}
   else if(form.id==='a-profile-form'){const name=String(f.get('display_name')||'').trim().slice(0,80);await this.run('profile',async()=>{await data.saveProfile({display_name:name||null,preferred_language:this.state.settings.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone?.slice(0,64)||null});this.profile={...this.profile,display_name:name};this.ctx.toast(L('saved2'));});}
   else if(form.id==='a-delete-form'){if(f.get('confirm')!=='DELETE'){this.say(L('deleteType'),'tone-danger');return true;}const keep=form.elements.keepLocal.checked;if(!confirm(L('deleteHelp')))return true;
-   await this.run('delete',async()=>{await auth.deleteAccount();await auth.signOut().catch(()=>{});this.ctx.sync().forget();this.backups=null;if(!keep)this.ctx.resetLocal();this.ctx.toast(L('accountDeleted'));});}
+   await this.run('delete',async()=>{const r=await auth.deleteAccount();await auth.signOut().catch(()=>{});this.ctx.sync().forget();this.backups=null;if(!keep)this.ctx.resetLocal();this.ctx.toast(L(r?.login_deleted===false?'dataDeletedLoginKept':'accountDeleted'));});}
   return true;}
 }
