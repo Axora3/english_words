@@ -66,3 +66,11 @@ test('index.html declares the manifest, iOS meta, icons and a CSP that only allo
  for(const s of ['rel="manifest"','apple-touch-icon','apple-mobile-web-app-capable','viewport-fit=cover','theme-color'])assert.ok(html.includes(s),s);
  const csp=html.match(/Content-Security-Policy" content="([^"]+)"/)[1];assert.match(csp,/script-src 'self';/);assert.match(csp,/connect-src 'self' https:\/\/\*\.supabase\.co;/);assert.doesNotMatch(csp,/unsafe-eval/);
 });
+test('committed cloud-config.json is used only when its key is filled, and never with a secret key',async()=>{
+ const {mkdtemp,writeFile}=await import('node:fs/promises');const {tmpdir}=await import('node:os');const {join}=await import('node:path');
+ const dir=await mkdtemp(join(tmpdir(),'ew-cfg-'));const write=c=>writeFile(join(dir,'cloud-config.json'),JSON.stringify(c));
+ await write({SUPABASE_URL:'https://abcd.supabase.co',SUPABASE_PUBLISHABLE_KEY:''});assert.deepEqual(publicCloudConfig(readEnv(dir,{})),{url:'',anonKey:''},'empty template = local-only, not a broken half config');
+ await write({SUPABASE_URL:'https://abcd.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_publishable_abc'});assert.deepEqual(publicCloudConfig(readEnv(dir,{})),{url:'https://abcd.supabase.co',anonKey:'sb_publishable_abc'});
+ assert.equal(publicCloudConfig(readEnv(dir,{SUPABASE_URL:'https://other.supabase.co',SUPABASE_ANON_KEY:'sb_publishable_env'})).url,'https://other.supabase.co','environment variables override the file');
+ await write({SUPABASE_URL:'https://abcd.supabase.co',SUPABASE_PUBLISHABLE_KEY:'sb_secret_oops'});assert.throws(()=>publicCloudConfig(readEnv(dir,{})),/secret key/);
+});
