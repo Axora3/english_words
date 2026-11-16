@@ -1,0 +1,5 @@
+import {activityDays,weekStart} from './calendar.js';
+import {dayKey} from './core.js';
+import {goalDefaults} from './advanced-state.js';
+export function saveGoals(state,input){const goals={};for(const key of Object.keys(goalDefaults)){const n=Number(input[key]);if(!Number.isInteger(n)||n<1||n>(key==='weeklyMinutes'?10080:1000))throw Error('invalidGoals');goals[key]=n;}state.advanced.goals=goals;return goals;}
+export function goalProgress(state,now=new Date()){const days=activityDays(state),today=days[dayKey(now)]||{},start=dayKey(weekStart(now)),end=dayKey(now),week=Object.values(days).filter(d=>d.date>=start&&d.date<=end),goals=state.advanced.goals;const values={dailyNew:today.newWords||0,dailyReview:today.reviewed||0,dailyQuiz:today.quizzes||0,weeklyWords:week.reduce((n,d)=>n+d.newWords,0),weeklyMinutes:Math.floor(week.reduce((n,d)=>n+d.seconds,0)/60)};return Object.entries(goals).map(([key,target])=>({key,target,value:values[key],percent:Math.min(100,Math.round(values[key]/target*100)),done:values[key]>=target}));}

@@ -1,0 +1,10 @@
+import {dayKey} from './core.js';
+export function activityDays(state){const days={};const get=at=>{const date=dayKey(new Date(at));return days[date]??=( {date,newWords:0,reviewed:0,quizzes:0,grammar:0,listening:0,speaking:0,writing:0,other:0,seconds:0,total:0,intensity:0,completed:false} );};
+ Object.values(state.learned).forEach(x=>get(x.learnedAt).newWords++);state.reviews.forEach(x=>get(x.at).reviewed++);state.tests.forEach(x=>get(x.finishedAt).quizzes++);Object.values(state.grammar?.completed||{}).forEach(x=>get(x.at).grammar++);
+ const a=state.advanced;if(a){a.practice.forEach(x=>{get(x.at)[x.mode.startsWith('listening')?'listening':'other']++;});a.writing.filter(x=>x.completedAt!==null).forEach(x=>get(x.completedAt).writing++);a.speaking.forEach(x=>get(x.at).speaking++);a.time.forEach(x=>get(x.at).seconds+=x.seconds);}
+ for(const day of Object.values(days)){day.total=day.newWords+day.reviewed+day.quizzes+day.grammar+day.listening+day.speaking+day.writing+day.other;day.intensity=day.total===0?0:day.total<3?1:day.total<7?2:day.total<15?3:4;const goals=a?.goals;day.completed=goals?day.newWords>=goals.dailyNew&&day.reviewed>=goals.dailyReview&&day.quizzes>=goals.dailyQuiz:day.newWords>=state.settings.dailyTarget;}
+ return days;
+}
+export function monthDays(year,month){const first=new Date(year,month,1),offset=(first.getDay()+6)%7;return Array.from({length:42},(_,i)=>{const d=new Date(year,month,1-offset+i);return {key:dayKey(d),date:d,inMonth:d.getMonth()===month};});}
+export function weekStart(date=new Date()){const d=new Date(date);d.setDate(d.getDate()-(d.getDay()+6)%7);d.setHours(0,0,0,0);return d;}
+export function longestStreak(state){const days=activityDays(state),keys=Object.keys(days).filter(k=>days[k].total>0);let best=0,run=0,previous=null;for(const key of keys.sort()){const n=new Date(key+'T12:00:00');if(previous){const next=new Date(previous);next.setDate(next.getDate()+1);run=dayKey(next)===key?run+1:1;}else run=1;best=Math.max(best,run);previous=n;}return best;}

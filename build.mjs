@@ -1,0 +1,13 @@
+import {mkdir,copyFile,writeFile,cp,rm} from 'node:fs/promises';
+import {emptyState} from './core.js';
+import {buildWidgetScript} from './widget-export.js';
+await rm('dist',{recursive:true,force:true});
+await mkdir('dist',{recursive:true});
+for(const file of ["achievements.js","advanced-state.js","analytics.js","app.js","backup.js","calendar.js","collections.js","collocations.js","context-learning.js","core.js","daily-challenge.js","dictionary.js","grammar-data.js","grammar-ui.js","grammar.js","home.js","i18n.js","icons.js","import-ui.js","mistakes.js","platform-i18n.js","platform-ui.js","practice-ui.js","practice.js","premium.js","progress-ui.js","shell.js","speech.js","study-goals.js","ui-polish.js","ui.js","vocabulary-import.js","vocabulary.js","voice-ui.js","weak-words.js","widget-export.js","widget-model.js","widget-runtime.js","widget-ui.js","word-family.js","word-ui.js","words.js","writing.js","sw.js","fonts.css","tokens.css","components.css","screens.css","index.html","icon.svg","manifest.webmanifest"])await copyFile(file,`dist/${file}`);
+await cp('assets','dist/assets',{recursive:true});
+await mkdir('widgets',{recursive:true});
+await mkdir('dist/widgets',{recursive:true});
+const widgetScript=buildWidgetScript(emptyState());
+await writeFile('widgets/English Words.js',widgetScript,'utf8');
+await writeFile('dist/widgets/English Words.js',widgetScript,'utf8');
+console.log('Static production build created in dist/ with the offline iPhone widget.');

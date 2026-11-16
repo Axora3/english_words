@@ -1,0 +1,4 @@
+import {vocabulary,normalizeWord} from './vocabulary.js';
+export function searchDictionary(state,query='',filters={}){const q=normalizeWord(query);return vocabulary(state).filter(w=>(!filters.level||w.level===filters.level)&&(!filters.pos||w.pos===filters.pos)&&(!filters.collection||state.advanced.collections.find(c=>c.id===filters.collection)?.wordIds.includes(w.id))&&(!q||[w.word,w.translation,w.ipa,w.pos,w.level,w.usage,w.usageMn,...w.synonyms,...w.antonyms,...state.advanced.collections.filter(c=>c.wordIds.includes(w.id)).map(c=>c.name)].some(text=>normalizeWord(text).includes(q))));}
+export function rememberSearch(state,query){const q=String(query).trim().slice(0,100);if(!q)return;state.advanced.searchHistory=[q,...state.advanced.searchHistory.filter(v=>v!==q)].slice(0,12);}
+export function rememberWord(state,id){if(!vocabulary(state).some(w=>w.id===id))return;state.advanced.recentWords=[id,...state.advanced.recentWords.filter(v=>v!==id)].slice(0,12);}
