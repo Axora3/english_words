@@ -2,6 +2,12 @@
 
 This is the exact path from this repository to a production URL. The steps marked **(you)** need your accounts. Nothing here has been deployed yet, and no credentials exist in the repo.
 
+## Current production setup
+
+- **Supabase:** shared project "Axora3's Project" (ref `wxirsnuyofgkrhjynasl`), schema `ew_*` applied 2026-11-17 and verified (3 tables with RLS, 4 functions, no trigger on `auth.users`).
+- **Vercel:** project `axora14/english-words`, Git-connected to `Axora3/english_words`, production branch `main`, preset "Other" (build settings from `vercel.json`).
+- **Cloud config:** either fill `SUPABASE_PUBLISHABLE_KEY` in the committed [cloud-config.json](cloud-config.json) (URL already set; edit it on GitHub and commit, and Vercel redeploys) or set `SUPABASE_URL` + `SUPABASE_ANON_KEY` in Vercel → Settings → Environment Variables (these override the file). Only the publishable/anon key, never the secret key. Until a key is present the site runs in local-only mode.
+
 ## 0. What you need
 
 - A Supabase account (the free tier is enough) and a Vercel account, both signing in with GitHub.

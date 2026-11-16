@@ -6,9 +6,16 @@ import {join} from 'node:path';
 
 function parse(text){const out={};for(const line of text.split(/\r?\n/)){const m=line.match(/^\s*(?:export\s+)?([A-Z0-9_]+)\s*=\s*(.*)\s*$/);if(!m)continue;let v=m[2];if(/^(['"]).*\1$/.test(v))v=v.slice(1,-1);else v=v.replace(/\s+#.*$/,'');out[m[1]]=v;}return out;}
 
-/** .env, then .env.local, then real environment variables (highest priority). */
+/** Committed public config (cloud-config.json). Used only once its key is filled in, so an empty
+ *  template never produces a half configuration. Only the URL and the PUBLISHABLE/anon key belong there. */
+function committedConfig(dir){const p=join(dir,'cloud-config.json');if(!existsSync(p))return {};
+ let c;try{c=JSON.parse(readFileSync(p,'utf8'));}catch{throw Error('cloud-config.json is not valid JSON.');}
+ const url=String(c?.SUPABASE_URL||'').trim(),key=String(c?.SUPABASE_PUBLISHABLE_KEY||c?.SUPABASE_ANON_KEY||'').trim();
+ return key?{SUPABASE_URL:url,SUPABASE_ANON_KEY:key}:{};}
+
+/** cloud-config.json, then .env, then .env.local, then real environment variables (highest priority). */
 export function readEnv(dir=process.cwd(),env=process.env){
- const merged={};for(const f of ['.env','.env.local']){const p=join(dir,f);if(existsSync(p))Object.assign(merged,parse(readFileSync(p,'utf8')));}
+ const merged={...committedConfig(dir)};for(const f of ['.env','.env.local']){const p=join(dir,f);if(existsSync(p))Object.assign(merged,parse(readFileSync(p,'utf8')));}
  for(const k of ['SUPABASE_URL','SUPABASE_ANON_KEY','SUPABASE_PUBLISHABLE_KEY'])if(env[k])merged[k]=env[k];
  return merged;
 }
