@@ -1,3 +1,5 @@
+import {weekChart} from './home.js';
+import {progressSummaryView} from './learning-plan.js';
 // Account & sync screen (#account): guest vs cloud explanation, authentication, first-sync choice,
 // sync status, cloud backups, profile, password, sign-out and account deletion.
 import {icon} from './icons.js';
@@ -69,7 +71,7 @@ export class AccountUI{
   if(this.backups===null){this.backups=undefined;this.loadCloud();}
   const head=pageHeader({title:this.P('profile'),sub:esc(this.ctx.sync()?.snapshot()?.user?.email||'')});
   const message=this.message?notice(esc(this.message.text),{tone:this.message.tone,role:'status'}):'';
-  return head+message+this.profileView()+this.passwordForm(false)+this.signOutView(this.ctx.sync().snapshot());
+  return head+message+button(this.state.settings.language==='mn'?'Миний эрх · Coin · Сунгалт':'Membership · Coins · Renewal',{href:'#membership',kind:'secondary'})+progressSummaryView(this.state)+`<section class="panel learning-summary"><h2>${this.state.settings.language==='mn'?'Энэ долоо хоног':'This week'}</h2>${weekChart(this.state,{t:this.t,dateLabel:this.ctx.dateLabel,locale:this.state.settings.language==='mn'?'mn-MN':'en-US'})}</section>`+this.profileView()+this.passwordForm(false)+this.signOutView(this.ctx.sync().snapshot());
  }
  profileView(){
   const p={...this.profile,...this.profileDraft},avatar=this.avatarDraft===undefined?p.avatar_data:this.avatarDraft;

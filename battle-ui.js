@@ -1,0 +1,28 @@
+import {community} from './cloud.js';
+import {button,esc,notice,pageHeader} from './ui.js';
+export class BattleUI{
+ constructor(ctx){this.ctx=ctx;this.reset();}
+ reset(){this.operation={};this.rows=null;this.players=[];this.round=null;this.busy=false;this.message='';this.owner=null;}
+ get user(){return this.ctx.user();}
+ async run(fn){if(this.busy)return;const owner=this.user?.id,op=this.operation;this.busy=true;this.message='';this.ctx.render();const guard=()=>this.user?.id===owner&&this.operation===op;try{await fn(guard);}catch(e){if(guard())this.message=['PGRST202','42P01'].includes(e.code)?'Challenge өгөгдлийн сангийн шинэчлэл хараахан идэвхжээгүй байна.':e.message;}finally{if(guard()){this.busy=false;this.ctx.render();}}}
+ async rpc(action,args={}){return community.challenge(action,args,this.ctx.deviceId(),this.user.id);}
+ async load(){await this.run(async guard=>{const rows=await this.rpc('list'),players=await community.leaderboard(100);if(!guard())return;this.rows=rows;this.players=players;});}
+ async click(action,value){if(!action.startsWith('battle-'))return false;
+  if(action==='battle-refresh'){await this.load();return true;}
+  if(action==='battle-back'){this.round=null;await this.load();return true;}
+  await this.run(async guard=>{const op=action.slice(7);if(op==='practice'){const created=await this.rpc('practice');if(!guard())return;const round=await this.rpc('start',{p_id:created.id});if(guard())this.round=round;return;}const args=op==='invite'?{p_opponent:value}:op==='answer'?{p_id:this.round.id,p_index:this.round.index,p_answer:value}:{p_id:value};const result=await this.rpc(op,args);if(!guard())return;
+   if(['start','answer'].includes(op))this.round=result;else {const rows=await this.rpc('list');if(guard())this.rows=rows;}
+  });return true;
+ }
+ view(){const mn=this.ctx.state().settings.language==='mn',L=(a,b)=>mn?a:b;
+  if(this.rows===null&&!this.busy){this.rows=[];queueMicrotask(()=>this.load());}
+  const head=pageHeader({title:'Challenge',sub:L('Найзтайгаа ижил 10 үгээр өрсөлдөөрэй. Тоглогч бүр 3 минуттай.','Challenge a friend to the same 10 words. Each player has 3 minutes.')});
+  const msg=this.message?notice(esc(this.message),{tone:'tone-danger',role:'alert'}):'';
+  const attrs=this.busy?'disabled aria-busy="true"':'';
+  if(this.round){const r=this.round;if(r.finished)return head+msg+`<section class="panel result-screen"><h2>${L('Дууслаа!','Completed!')} ${r.score} / ${r.total}</h2><p>${L('Хоёр тоглогч дуусмагц үр дүнг харьцуулна.','Compare results once both players finish.')}</p>${button(L('Үр дүн харах','View results'),{action:'battle-back',attrs})}</section>`;
+   return head+msg+`<section class="panel battle-question"><p>${r.index+1} / ${r.total} · ${L('Дуусах цаг','Deadline')}: ${esc(new Date(r.deadline).toLocaleTimeString())}</p><h2 lang="en">${esc(r.question.word)}</h2><div class="battle-options">${r.question.options.map(o=>button(esc(o.text),{action:'battle-answer:'+o.id,kind:'secondary',attrs})).join('')}</div><p class="key-hint">${L('Хугацаа эхэлсэн. Хуудсаас гарсан ч цаг үргэлжилнэ.','The timer keeps running if you leave this page.')}</p>${button(L('Буцах','Back'),{action:'battle-back',kind:'ghost',attrs})}</section>`;
+  }
+  const me=this.players.find(x=>x.user_id===this.user?.id),players=this.players.filter(x=>x.user_id!==this.user?.id&&Math.abs(x.level-(me?.level||1))<=10);
+  return head+msg+`<div class="form-actions">${button(L('Өдрийн сорил · coin авах','Daily quiz · earn coins'),{action:'battle-practice',attrs})}${button(L('Шинэчлэх','Refresh'),{action:'battle-refresh',attrs})}${button('Leaderboard',{href:'#leaderboard',kind:'ghost'})}</div><section class="panel"><h2>${L('Миний challenges','My challenges')}</h2><div class="battle-list">${(this.rows||[]).map(r=>{const expired=new Date(r.expires_at)<=new Date();return `<article class="panel"><strong>${r.challenger===r.opponent?L('Өдрийн сорил','Daily quiz'):esc(r.name)}</strong><p>${expired?L('Хугацаа дууссан','Expired'):r.status==='declined'?L('Татгалзсан','Declined'):r.status==='pending'?L('Урилга хүлээгдэж байна','Invitation pending'):L('Зөвшөөрсөн','Accepted')}</p>${r.finished?`<p>${L('Таны оноо','Your score')}: ${r.mine}/10 · ${r.challenger===r.opponent?L('6/10 ба түүнээс дээш бол өдрийн шагнал авна.','Score at least 6/10 for your daily reward.'):r.other_finished?`${L('Найзын оноо','Opponent')}: ${r.other_score}/10 — ${r.mine===r.other_score?L('Тэнцсэн','Draw'):r.mine>r.other_score?L('Та хожлоо','You won'):L('Найз тань хожлоо','Opponent won')}`:L('Найзыгаа хүлээж байна','Waiting for opponent')}</p>`:!expired&&r.status==='accepted'?button(L('Эхлэх / үргэлжлүүлэх','Start / resume'),{action:'battle-start:'+r.id,attrs}):!expired&&r.status==='pending'&&r.opponent===this.user?.id?button(L('Зөвшөөрөх','Accept'),{action:'battle-accept:'+r.id,attrs})+button(L('Татгалзах','Decline'),{action:'battle-decline:'+r.id,kind:'ghost',attrs}):''}</article>`;}).join('')||`<p>${L('Одоогоор урилга алга. Доороос найзаа сонгоорой.','No invitations yet. Choose a player below.')}</p>`}</div></section><section class="panel"><h2>${L('Найзаа урих','Invite a friend')}</h2><p>${L('Танаас ±10 level-ийн зөрүүтэй тоглогчид. Урилга 7 хоног хүчинтэй. Coin бооцоогүй.','Players within 10 levels. Invitations last 7 days. No coin stakes.')}</p>${!me?`<p>${L('Эхлээд leaderboard дээр ахицаа шинэчилнэ үү.','Publish your progress on the leaderboard first.')}</p>`:''}<div class="battle-list">${players.map(p=>`<div class="setting-row"><span>${esc(p.handle)} · Level ${p.level}</span>${button(L('Урих','Invite'),{action:'battle-invite:'+p.user_id,size:'sm',attrs:!me?'disabled':attrs})}</div>`).join('')}</div></section>`;
+ }
+}

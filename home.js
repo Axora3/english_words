@@ -1,3 +1,4 @@
+import {planView,progressSummaryView} from './learning-plan.js';
 // Home: one clear next action, a margin rail with the day's timeline, challenge, goals and course.
 import {icon} from './icons.js';
 import {u} from './labels.js';
@@ -58,6 +59,6 @@ export function homeView(state,day,ctx){
  const grammar=`<section class="rail-section">${sectionHeader(L('grammarWeek'))}<a class="course-link" href="#grammar${lesson?'/'+lesson.id:''}">${iconTile('school','context')}<span><small>${lesson?`${lesson.level} · ${L('lesson')} ${lessons.indexOf(lesson)+1}`:'A1 → C1'}</small><strong>${lesson?esc(lesson.title[state.settings.language]):t('grammarStart')}</strong>${g?`<small class="num">${completed} / ${lessons.length} ${t('completed')}</small>`:''}</span>${icon('chevron-right')}</a></section>`;
  return `<div class="home">
   <header class="home-header"><p class="eyebrow">${greeting}</p><h1>${L('todayPlan')}</h1></header>
-  <div class="home-grid"><div class="home-main">${hero}${stats}${week}</div><aside class="home-rail" aria-label="${esc(L('yourDay'))}">${timeline}${challenge}${goalList}${grammar}</aside></div>
+  <div class="home-grid"><div class="home-main">${!state.settings.learningPlan?planView(state):''}${hero}${progressSummaryView(state)}${stats}${week}</div><aside class="home-rail" aria-label="${esc(L('yourDay'))}">${timeline}${challenge}${goalList}${grammar}</aside></div>
  </div>`;
 }

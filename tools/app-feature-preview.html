@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="mn" data-theme="dark"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#202734">
+<meta name="color-scheme" content="dark light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://*.supabase.co; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="Learn English, one word at a time. Англи үгийг өдөр бүр суръя.">
+<meta name="application-name" content="English Words">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="English Words">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/icons/favicon-32.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="preload" href="/assets/fonts/inter-0.ttf" as="font" type="font/ttf" crossorigin>
+<link rel="stylesheet" href="/fonts.css"><link rel="stylesheet" href="/tokens.css"><link rel="stylesheet" href="/components.css"><link rel="stylesheet" href="/screens.css"><link rel="stylesheet" href="/entry.css">
+<title>English Words — Learn every day</title>
+</head><body>
+<a class="skip-link" href="#main" data-skip-main>Skip to content / Агуулга руу</a>
+<div id="app"><div class="boot" role="status" aria-label="English Words"><img src="./icons/icon-192.png" alt="" width="72" height="72"><span class="boot-bar"></span></div></div>
+<noscript><p class="noscript">English Words needs JavaScript. / English Words-д JavaScript шаардлагатай.</p></noscript>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>
+const user={id:'qa-local-user',email:'qa@example.test',user_metadata:{}};let saved=null,banned=false;let authListener;
+const membership=()=>({active:!banned,banned,gate_enabled:false,coins:1000,coin_price:100000,price:5000,streak:0,streak_days:7,sales_enabled:false,discount_percent:0,purchase_url:''});
+const query=(result)=>{const p={then:(a,b)=>Promise.resolve({data:typeof result==='function'?result():result,error:null}).then(a,b)};return new Proxy(p,{get:(o,k)=>k in o?o[k]:()=>pProxy});var pProxy;};
+function chain(result){let p;const x={then:(a,b)=>Promise.resolve({data:typeof result==='function'?result():result,error:null}).then(a,b)};p=new Proxy(x,{get:(o,k)=>k in o?o[k]:()=>p});return p;}
+window.supabase={createClient:()=>({auth:{getSession:async()=>({data:{session:{user,access_token:'local-qa-only'}},error:null}),getUser:async()=>({data:{user},error:null}),onAuthStateChange:fn=>(authListener=fn,{data:{subscription:{unsubscribe(){}}}}),signOut:async()=>{authListener?.('SIGNED_OUT',null);return {data:{},error:null};}},from:table=>chain(table==='ew_profiles'?{}:table==='ew_learning_states'?saved:[]),rpc:(name,args)=>chain(()=>{if(name==='ew_membership_status')return membership();if(name==='ew_device_status')return {claimed:true,active:true};if(name==='ew_claim_device')return {};if(name==='ew_sync_profile')return {level:1,xp:0,coins:1000,handle:'QA',rank:1,players:1};if(name==='ew_challenge')return [];if(name==='ew_push_learning_state'){saved={state:args.p_state,revision:(saved?.revision||0)+1};return {status:'ok',revision:saved.revision,updated_at:new Date().toISOString()};}return {};})})};
+</script><script type="module" src="/app.js"></script>
+</body></html>

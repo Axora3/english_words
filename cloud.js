@@ -74,6 +74,7 @@ export const data={
  *  Levels, XP and coins come back from the database, which derives them from the synced learning
  *  document — this file never sends a number that a player could have edited. */
 export const community={
+ async challenge(action,args,device,user){return learningRequest(user,c=>c.rpc('ew_challenge',{p_action:action,...args,p_device:device}));},
  /** Publishes this account's progress and returns {handle,level,xp,coins,rank,players,...}. */
  async syncProfile(handle=null,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_sync_profile',{p_handle:handle}));},
  async leaderboard(limit=50){return check(await (await need()).from('ew_public_stats')
@@ -82,3 +83,5 @@ export const community={
  async claimDevice(deviceId,label=null,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_claim_device',{p_device_id:deviceId,p_label:label}));},
  async deviceStatus(deviceId,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_device_status',{p_device_id:deviceId}));},
 };
+
+export const membership={status:user=>learningRequest(user,c=>c.rpc('ew_membership_status')),redeem:(request,user)=>learningRequest(user,c=>c.rpc('ew_redeem_month',{p_request:request}))};

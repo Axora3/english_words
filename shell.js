@@ -14,7 +14,7 @@ export function activeGroup(route){for(const [name,list] of Object.entries(group
 
 /** Human title for a route, used by the top bar. */
 export function routeTitle(route,state,t){
- const own={dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review'),account:u(state,'account'),profile:u(state,'profile'),leaderboard:u(state,'leaderboard')};
+ const own={membership:state.settings.language==='mn'?'Миний эрх':'Membership',plan:state.settings.language==='mn'?'Суралцах төлөвлөгөө':'Learning plan',battle:'Challenge',dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review'),account:u(state,'account'),profile:u(state,'profile'),leaderboard:u(state,'leaderboard')};
  if(own[route])return own[route];
  const core={learn:'learn',test:'test',results:'test',favorites:'favorites',history:'history',settings:'settings',notifications:'notifications',grammar:'grammar',widget:'widget',details:'details'};
  return core[route]?t(core[route]):t('p.'+route);

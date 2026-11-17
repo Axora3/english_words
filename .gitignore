@@ -9,3 +9,5 @@ Thumbs.db
 config.js
 .vercel/
 .claude/
+
+.work/
