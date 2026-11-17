@@ -1,4 +1,5 @@
 import {u} from './labels.js';
+import {createAccountStorage} from './account-storage.js';
 import {entryView,requiresEntry,isEntryAction,isEntryForm} from './auth-gate.js';
 import {polishUI,audioFeedback} from './ui-polish.js';
 import {recordGrammarMistakes} from './mistakes.js';
@@ -29,9 +30,10 @@ import { validBackup } from './backup.js';
 import {words} from './words.js';
 import {translator} from './i18n.js';
 import {defaults,emptyState,dayKey,ensureDay,pruneNotified,schedule,nextWord,markLearned,dueWords,reviewQueue,reviewWord,streak,validateSettings,rescheduleDay,makeTest,scoreTest,notificationEvents} from './core.js';
-const $=s=>document.querySelector(s), KEY='lexi-v1', UI_KEY='english-words-ui';
+const $=s=>document.querySelector(s), UI_KEY='english-words-ui';
+const accountStorage=createAccountStorage({storage:localStorage,validate:validBackup});
 let state=emptyState(),storageFailed=false,recoveryRaw=null;
-try{const raw=localStorage.getItem(KEY);if(raw!==null){const saved=JSON.parse(raw);if(!validBackup(saved))throw Error('invalid');state={...emptyState(),...saved,settings:{...defaults,...saved.settings}};}}catch{storageFailed=true;try{recoveryRaw=localStorage.getItem(KEY);}catch{recoveryRaw='storage unavailable';}}
+try{state=accountStorage.select(null);}catch{storageFailed=true;try{recoveryRaw=accountStorage.raw();}catch{recoveryRaw='storage unavailable';}}
 migrateAdvanced(state);setCustomWords(state.advanced.customWords);
 if(state.designVersion!==2){state.settings.theme='dark';state.designVersion=2;}
 // Per-device interface conveniences (not learning data, never part of backups).
@@ -46,12 +48,12 @@ const locale=()=>state.settings.language==='mn'?'mn-MN':'en-US';
 const dateLabel=(v,options={month:'short',day:'numeric'})=>{const d=new Date(v);if(state.settings.language==='mn')return `${options.year?d.getFullYear()+' он, ':''}${options.weekday?(options.weekday==='long'?['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба']:['Ня','Да','Мя','Лх','Пү','Ба','Бя'])[d.getDay()]+', ':''}${d.getMonth()+1}-р сарын ${d.getDate()}`;return d.toLocaleDateString(locale(),options);};
 const timeLabel=v=>new Date(v).toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit',hour12:false});
 const today=()=>ensureDay(state,words);
-function persist({quiet=false,fromCloud=false}={}){if(recoveryRaw!==null){storageFailed=true;return;}const earned=quiet?[]:updateAchievements(state);try{localStorage.setItem(KEY,JSON.stringify(state));storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);return;}if(!fromCloud)syncEngine?.markDirty(quiet);refreshWidget();if(earned.length)announce(earned);}
+function persist({quiet=false,fromCloud=false}={}){if(recoveryRaw!==null){storageFailed=true;return;}const earned=quiet?[]:updateAchievements(state);try{accountStorage.save(state);storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);return;}if(!fromCloud)syncEngine?.markDirty(quiet);refreshWidget();if(earned.length)announce(earned);}
 /** Replaces the local document with one from the cloud (sync, restore). Validated by the caller. */
 function applyState(next,{dirty=false}={}){state={...emptyState(),...JSON.parse(JSON.stringify(next)),designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);reviewSession=null;reviewResult=null;result=null;recoveryRaw=null;persist({quiet:true,fromCloud:!dirty});if(!settingsDirty)render();}
 function resetLocal(){const fresh=emptyState();fresh.settings={...state.settings};fresh.designVersion=2;applyState(fresh,{dirty:false});}
 function deviceId(){try{const ui=JSON.parse(localStorage.getItem(UI_KEY)||'{}');if(ui.deviceId)return ui.deviceId;const id=(crypto.randomUUID?.()||String(Date.now())).slice(0,36);saveUI({deviceId:id});return id;}catch{return null;}}
-function announce(earned){const b=earned[0];setTimeout(()=>toast(`${u(state,'achievementUnlocked')}: ${b.target} · ${t('p.'+b.category)}${earned.length>1?` (+${earned.length-1})`:''}`,false,'trophy'),60);}
+function announce(earned){const b=earned[0],owner=accountStorage.userId;setTimeout(()=>{if(accountStorage.userId===owner)toast(`${u(state,'achievementUnlocked')}: ${b.target} · ${t('p.'+b.category)}${earned.length>1?` (+${earned.length-1})`:''}`,false,'trophy');},60);}
 function toast(message,error=false,ic=''){const e=$('#toast');e.innerHTML=`${icon(ic||(error?'alert-circle':'circle-check'))}<span>${esc(message)}</span>`;e.className='show'+(error?' error':'');clearTimeout(toast.timer);toast.timer=setTimeout(()=>e.className='',error?12000:4000);}
 function go(name){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;if(location.hash==='#'+name){route=name.split('/')[0];render();}else location.hash=name;}
 function ctx(){return {state,t,byId,words,revealed,voiceResult,platform,timeLabel,dateLabel,countdown,today,reviewSession,reviewResult,result,search,filter,detailId};}
@@ -188,12 +190,12 @@ document.addEventListener('submit',async e=>{e.preventDefault();if(entryLocked()
  if(['settings-form','notification-form'].includes(e.target.id)){const form=e.target,fd=new FormData(form),old=state.settings,s={...old};for(const [key,val]of fd)s[key]=['dailyTarget','interval'].includes(key)?Number(val):val;for(const input of form.querySelectorAll('input[type="checkbox"]'))s[input.name]=input.checked;if(!validateSettings(s)){$('#settings-error').innerHTML=notice(t('invalidSettings'),{tone:'tone-danger',ic:'alert-triangle'});return;}state.settings=s;if(s.startTime!==old.startTime||s.interval!==old.interval||s.dailyTarget!==old.dailyTarget)rescheduleDay(state,words);settingsDirty=false;persist();if(s.notifications&&!old.notifications&&permission()==='default')await requestPermission();render();toast(t('saved'));}
 });
 document.addEventListener('input',e=>{if(accountUI.input(e.target))return;if(communityUI.input(e.target))return;if(e.target.name==='email'&&e.target.closest('#a-auth-form')){accountUI.draftEmail=e.target.value;return;}if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
-document.addEventListener('change',async e=>{if(await accountUI.change(e.target))return;if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
+document.addEventListener('change',async e=>{if(await accountUI.change(e.target))return;if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const importOwner=accountStorage.userId;const data=JSON.parse(await file.text());if(accountStorage.userId!==importOwner)return;if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(settingsDirty&&!confirm(t('unsaved'))){history.replaceState(null,'','#'+route);return;}settingsDirty=false;route=target.split('/')[0];if(route==='details')detailId=target.split('/')[1]||detailId;revealed=route==='details';search='';filter='all';reviewResult=null;closeNav();render();window.scrollTo(0,0);});
 window.addEventListener('beforeunload',e=>{if(settingsDirty){e.preventDefault();e.returnValue='';}});
-window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const data=JSON.parse(e.newValue);if(validBackup(data)){state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);if(!settingsDirty)render();}}catch{}});
+window.addEventListener('storage',e=>{if(e.key!==accountStorage.stateKey||!e.newValue)return;try{const data=JSON.parse(e.newValue);if(validBackup(data)){state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);if(!settingsDirty)render();}}catch{}});
 function downloadFile(data,name,type='application/json'){const url=URL.createObjectURL(new Blob([data],{type}));const link=document.createElement('a');link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
-const platform=new PlatformUI({state:()=>state,t:()=>t,render,persist,toast,esc,dateLabel,speak,go,download:downloadFile,openWord(id){detailId=id;revealed=true;go('details/'+id);}});
+let platform=new PlatformUI({state:()=>state,t:()=>t,render,persist,toast,esc,dateLabel,speak,go,download:downloadFile,openWord(id){detailId=id;revealed=true;go('details/'+id);}});
 window.addEventListener('online',()=>{syncEngine?.syncNow();if(!settingsDirty)render();});window.addEventListener('offline',()=>{if(!settingsDirty)render();});
 let voiceResult={status:'idle'},voiceWordId=null;
 const voicePractice=createSpeechPractice({scope:window,onChange(result){
@@ -208,14 +210,31 @@ let cloudEnabled=false,cloudStarted=false,authReady=false,authError='',deviceBlo
 function entryLocked(){return requiresEntry(authReady,syncEngine.snapshot().user,accountUI.recovery)||deviceBlocked;}
 async function verifyActiveDevice(){
  const user=syncEngine.snapshot().user;if(!user||!navigator.onLine)return;
- try{const status=await community.deviceStatus(deviceId());if(syncEngine.snapshot().user?.id!==user.id)return;
-  if(!status.claimed)await community.claimDevice(deviceId(),deviceLabel());
+ try{const status=await community.deviceStatus(deviceId(),user.id);if(syncEngine.snapshot().user?.id!==user.id)return;
+  if(!status.claimed)await community.claimDevice(deviceId(),deviceLabel(),user.id);
   const blocked=!status.active;if(blocked!==deviceBlocked){deviceBlocked=blocked;render();}
  }catch(e){console.warn('Device status unavailable:',e.message);}
 }
 const communityUI=new CommunityUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},deviceId,sync:()=>syncEngine,dateLabel});
-const accountUI=new AccountUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},toast,persist,applyState,resetLocal,download:downloadFile,dateLabel,timeLabel,sync:()=>syncEngine});
-const syncEngine=createSyncEngine({api:{fetchState:()=>data.fetchState(),pushState:(s,b)=>data.pushState(s,b,deviceId()),createBackup:(s,r,l)=>data.createBackup(s,r,l)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{if(snap.status==='device'){deviceBlocked=true;render();}const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
+const accountUI=new AccountUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},toast,persist,applyState,resetLocal,clearAccountLocal:id=>accountStorage.clear(id),download:downloadFile,dateLabel,timeLabel,sync:()=>syncEngine});
+const syncEngine=createSyncEngine({storage:accountStorage.syncStorage,api:{fetchState:id=>data.fetchState(id),pushState:(s,b,id)=>data.pushState(s,b,deviceId(),id),createBackup:(s,r,l,id)=>data.createBackup(s,r,l,id)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{if(snap.status==='device'){deviceBlocked=true;render();}const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
+function selectAccount(next){
+ const id=next?.id||null;
+ if(accountStorage.userId!==id){
+  // Invalidate old async work before replacing the document or its storage namespace.
+  syncEngine.setUser(null);settingsDirty=false;deviceBlocked=false;
+  voicePractice.stop(true);window.speechSynthesis?.cancel();voiceResult={status:'idle'};voiceWordId=null;
+  platform=new PlatformUI(platform.ctx);search='';filter='all';detailId=null;lastSpoken='';
+  communityUI.stats=null;communityUI.board=null;communityUI.draftHandle=null;
+  communityUI.busy='';communityUI.operation=null;communityUI.message=null;communityUI.device=null;
+  accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;accountUI.backups=null;accountUI.message=null;
+  accountUI.busy='';accountUI.operation=null;
+  clearTimeout(toast.timer);$('#toast').className='';$('#toast').textContent='';
+  try{applyState(accountStorage.select(id));}
+  catch{state=emptyState();migrateAdvanced(state);setCustomWords([]);storageFailed=true;recoveryRaw=accountStorage.raw();render();}
+ }
+ syncEngine.setUser(next);
+}
 function syncButton(snap=syncEngine.snapshot()){const s=snap.status,label=u(state,syncLabel[s]||'localOnlyState');return `<a class="icon-btn sync-indicator is-${s}" href="#account" aria-label="${esc(label)}" data-tooltip="${esc(label)}">${icon(syncIcon[s]||'cloud')}</a>`;}
 function syncView(){return syncButton();}
 function accountSummary(){if(!cloudEnabled)return `<section class="settings-group" id="set-account"><h2 class="group-title">${u(state,'account')}</h2><div class="group-body">${linkRow('#account',u(state,'localOnlyState'),{ic:'cloud-off',help:u(state,'cloudOff')})}</div></section>`;const snap=syncEngine.snapshot(),L=k=>u(state,k);return `<section class="settings-group" id="set-account"><h2 class="group-title">${L('account')}</h2><div class="group-body">${linkRow('#account',snap.user?esc(snap.user.email):L('guestTitle'),{ic:syncIcon[snap.status]||'cloud',help:snap.user?L(syncLabel[snap.status]||'synced'):L('signIn')+' · '+L('signUp'),meta:snap.user&&snap.lastSyncedAt?timeLabel(snap.lastSyncedAt):''})}</div></section>`;}
@@ -226,22 +245,23 @@ function installSection(){const p=pwaState(),L=k=>u(state,k),steps=(title,items,
  *  it finds out on its next push (the database refuses it) and can take it back from the Players
  *  screen. Failures are not fatal — learning keeps working without the community features. */
 async function claimThisDevice(){
- try{await community.claimDevice(deviceId(),deviceLabel());deviceBlocked=false;await data.initializeProfile(syncEngine.snapshot().user).catch(e=>console.warn('Profile initialization unavailable:',e.message));await community.syncProfile();}
+ const user=syncEngine.snapshot().user;if(!user)return;
+ try{await community.claimDevice(deviceId(),deviceLabel(),user.id);if(syncEngine.snapshot().user?.id!==user.id)return;deviceBlocked=false;await data.initializeProfile(user).catch(e=>console.warn('Profile initialization unavailable:',e.message));if(syncEngine.snapshot().user?.id===user.id)await community.syncProfile(null,user.id);}
  catch(e){console.warn('Device claim unavailable:',e?.message||e);}
 }
 async function startCloud(){
  if(cloudStarted)return;cloudStarted=true;
  try{
-  const session=await auth.session();syncEngine.setUser(session?.user||null);await verifyActiveDevice();
+  const session=await auth.session();selectAccount(session?.user||null);await verifyActiveDevice();
   await auth.onChange((event,session)=>{
-   const previousUser=syncEngine.snapshot().user,wasSignedIn=Boolean(previousUser);
+   const previousUser=syncEngine.snapshot().user;
    if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}
-   if(event==='SIGNED_OUT'){deviceBlocked=false;accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;accountUI.backups=null;settingsDirty=false;accountUI.recovery=false;communityUI.stats=null;communityUI.board=null;syncEngine.setUser(null);}
-   else if(session?.user)syncEngine.setUser(session.user);
+   if(event==='SIGNED_OUT'){deviceBlocked=false;accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;accountUI.backups=null;settingsDirty=false;accountUI.recovery=false;communityUI.stats=null;communityUI.board=null;selectAccount(null);}
+   else if(session?.user)selectAccount(session.user);
    if(event==='SIGNED_IN'){
     if(previousUser?.id!==session?.user?.id){accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;}
     accountUI.backups=null;accountUI.message=null;communityUI.board=null;if(previousUser?.id!==session?.user?.id)claimThisDevice();
-    if(!wasSignedIn&&!accountUI.recovery&&route==='account')go('dashboard');
+    if(previousUser?.id!==session?.user?.id&&!accountUI.recovery&&route==='account')go('dashboard');
    }
    if(!settingsDirty||!session?.user)render();
   });
@@ -253,7 +273,7 @@ cloudConfig().then(async cfg=>{cloudEnabled=Boolean(cfg);if(cfg){await startClou
 window.addEventListener('hashchange',()=>{if(cloudEnabled&&/^#(account|leaderboard)/.test(location.hash)){startCloud();communityUI.load();}});
 setInterval(()=>{if(!document.hidden)verifyActiveDevice();},30000);
 setInterval(()=>{if(!document.hidden&&syncEngine.snapshot().user&&syncEngine.snapshot().dirty)syncEngine.syncNow();},120000);
-async function notifyTick(){if(entryLocked())return;const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
+async function notifyTick(){if(entryLocked())return;const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(accountStorage.raw());if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
 setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureDay(state,words);if(!settingsDirty)render();notifyTick();}});
 ensureDay(state,words);pruneNotified(state);persist();render();

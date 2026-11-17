@@ -5,7 +5,7 @@ A bilingual (Mongolian/English) English-vocabulary and grammar learning app. Sig
 ```sh
 npm ci          # @supabase/supabase-js (runtime, vendored into dist/) + PGlite (tests only)
 npm run dev     # http://localhost:5173 (127.0.0.1 only); serves config.js, sw.js and the client
-npm test        # 110 tests: entry access, profiles, learning logic, merge/sync, PWA and database RLS
+npm test        # 116 tests: account isolation, profiles, learning logic, merge/sync, PWA and database RLS
 npm run build   # clean static build in dist/ (deployed by Vercel), plus the Scriptable widget
 ```
 
@@ -80,6 +80,8 @@ Sign in and the app publishes a small public profile: a name you choose, your le
 ## Guest mode, cloud account and sync
 
 - **Signed out:** only authentication and installation instructions are available. Existing local progress is preserved. Direct learning URLs return to the entry screen, and learning shortcuts/actions are disabled.
+- **Per-account local data:** learning documents, sync metadata, merge bases and pre-sync copies use separate account-ID namespaces. Signing out hides the account's document instead of turning it into guest progress. A new account starts empty and downloads only its own cloud row. Signing back into an existing account restores its own local/cloud progress. In-flight work is invalidated on account changes, and cloud data requests pin the original account's authorization token.
+- **Older local storage:** progress under the former shared `lexi-v1` key is migrated only when its old sync metadata identifies an owner. Unowned legacy documents are preserved without being assigned to another account. This change does not delete or guess ownership of historical cloud progress.
 - **Account (required):** email + password sign-up with email confirmation, sign-in and password recovery on entry. After sign-in, Settings → **Account & sync** also supports email links, password change, sign-out and account deletion. Sessions persist and refresh automatically.
 - **What syncs:** the same document as the JSON backup (all progress, settings, collections, custom words). It is stored in `ew_learning_states`, one row per user, readable only by that user (Row Level Security on `auth.uid()`). The vocabulary and the 100 grammar lessons are app content and stay in the bundle.
 - **First sign-in on a device:** nothing is uploaded or replaced automatically when both the device and the account hold progress. You see both side by side and choose **Merge both**, **Use cloud progress** or **Use this device's progress**. Merge is recommended. Before anything changes, a copy of the device's progress is kept (downloadable until you discard it). Replacing the cloud copy saves it as a cloud backup first. The result is verified by reading it back.

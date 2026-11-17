@@ -26,6 +26,13 @@ export async function getClient(){
 const redirectTo=hash=>location.origin+location.pathname+(hash||'#account');
 function check({data,error}){if(error)throw Object.assign(Error(error.message||'Request failed'),{code:error.code||error.status||'error',status:error.status});return data;}
 const need=async()=>{const c=await getClient();if(!c)throw Object.assign(Error('Cloud sync is not configured.'),{code:'not-configured'});return c;};
+// Bind a learning request to the session it started with. A queued request must never acquire
+// the next account's Authorization header after the person switches accounts.
+async function learningRequest(expectedUser,query){
+ const c=await need(),session=check(await c.auth.getSession()).session;
+ if(!session||(expectedUser&&session.user.id!==expectedUser))throw Object.assign(Error('Account changed'),{code:'stale-account'});
+ return check(await query(c).setHeader('Authorization','Bearer '+session.access_token));
+}
 
 export const auth={
  async session(){const c=await getClient();if(!c)return null;return check(await c.auth.getSession()).session;},
@@ -38,20 +45,20 @@ export const auth={
  async updatePassword(password){return check(await (await need()).auth.updateUser({password}));},
  async signOut(){const c=await getClient();if(c)check(await c.auth.signOut({scope:'local'}));},
  /** Deletes all English Words data; the login is kept if another app in the project uses it. */
- async deleteAccount(){return check(await (await need()).rpc('ew_delete_my_account'));},
+ async deleteAccount(expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_delete_my_account'));},
 };
 
 export const data={
- async fetchState(){const r=check(await (await need()).from('ew_learning_states').select('state,revision,updated_at').maybeSingle());return r?{state:r.state,revision:Number(r.revision),updated_at:r.updated_at}:null;},
- async pushState(state,baseRevision,deviceId=null){const r=check(await (await need()).rpc('ew_push_learning_state',{p_state:state,p_base_revision:baseRevision,p_device_id:deviceId}));return {status:r.status,revision:r.revision===null?null:Number(r.revision),updated_at:r.updated_at};},
- async createBackup(state,reason='manual',label=null){const words=Object.keys(state?.learned||{}).length;check(await (await need()).from('ew_cloud_backups').insert({state,reason,label,words_learned:words}));},
- async listBackups(){return check(await (await need()).from('ew_cloud_backups').select('id,label,reason,words_learned,created_at').order('created_at',{ascending:false}).limit(30));},
- async getBackup(id){return check(await (await need()).from('ew_cloud_backups').select('state').eq('id',id).single()).state;},
+ async fetchState(expectedUser=null){const r=await learningRequest(expectedUser,c=>c.from('ew_learning_states').select('state,revision,updated_at').maybeSingle());return r?{state:r.state,revision:Number(r.revision),updated_at:r.updated_at}:null;},
+ async pushState(state,baseRevision,deviceId=null,expectedUser=null){const r=await learningRequest(expectedUser,c=>c.rpc('ew_push_learning_state',{p_state:state,p_base_revision:baseRevision,p_device_id:deviceId}));return {status:r.status,revision:r.revision===null?null:Number(r.revision),updated_at:r.updated_at};},
+ async createBackup(state,reason='manual',label=null,expectedUser=null){const words=Object.keys(state?.learned||{}).length;await learningRequest(expectedUser,c=>c.from('ew_cloud_backups').insert({state,reason,label,words_learned:words}));},
+ async listBackups(expectedUser=null){return learningRequest(expectedUser,c=>c.from('ew_cloud_backups').select('id,label,reason,words_learned,created_at').order('created_at',{ascending:false}).limit(30));},
+ async getBackup(id,expectedUser=null){return (await learningRequest(expectedUser,c=>c.from('ew_cloud_backups').select('state').eq('id',id).single())).state;},
  async deleteBackup(id){check(await (await need()).from('ew_cloud_backups').delete().eq('id',id));},
- async profile(){return check(await (await need()).from('ew_profiles').select('display_name,first_name,last_name,nickname,avatar_data,preferred_language,timezone').maybeSingle());},
- async saveProfile(fields,expectedUser=null){const c=await need(),{data:{user}}=await c.auth.getUser();if(!user||expectedUser&&user.id!==expectedUser)throw Error('Account changed. Try again.');check(await c.from('ew_profiles').upsert({...fields,id:user.id},{onConflict:'id'}));},
+ async profile(expectedUser=null){return learningRequest(expectedUser,c=>c.from('ew_profiles').select('display_name,first_name,last_name,nickname,avatar_data,preferred_language,timezone').maybeSingle());},
+ async saveProfile(fields,expectedUser=null){const c=await need(),{data:{user}}=await c.auth.getUser();if(!user||expectedUser&&user.id!==expectedUser)throw Object.assign(Error('Account changed. Try again.'),{code:'stale-account'});await learningRequest(expectedUser||user.id,c=>c.from('ew_profiles').upsert({...fields,id:user.id},{onConflict:'id'}));},
  async initializeProfile(user){
-  const existing=await data.profile(),draft=validateProfile(user?.user_metadata?.ew_profile||{});
+  const existing=await data.profile(user?.id),draft=validateProfile(user?.user_metadata?.ew_profile||{});
   const avatar=pendingAvatar(user);
   if(avatar){await data.saveProfile({avatar_data:avatar},user.id);clearPendingAvatar();}
   if(!draft.error&&(!existing?.first_name||!existing?.last_name||!existing?.nickname)){
@@ -68,10 +75,10 @@ export const data={
  *  document — this file never sends a number that a player could have edited. */
 export const community={
  /** Publishes this account's progress and returns {handle,level,xp,coins,rank,players,...}. */
- async syncProfile(handle=null){return check(await (await need()).rpc('ew_sync_profile',{p_handle:handle}));},
+ async syncProfile(handle=null,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_sync_profile',{p_handle:handle}));},
  async leaderboard(limit=50){return check(await (await need()).from('ew_public_stats')
   .select('user_id,handle,level,xp,words_learned,reviews,lessons,coins,updated_at')
   .order('xp',{ascending:false}).order('updated_at',{ascending:true}).limit(limit));},
- async claimDevice(deviceId,label=null){return check(await (await need()).rpc('ew_claim_device',{p_device_id:deviceId,p_label:label}));},
- async deviceStatus(deviceId){return check(await (await need()).rpc('ew_device_status',{p_device_id:deviceId}));},
+ async claimDevice(deviceId,label=null,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_claim_device',{p_device_id:deviceId,p_label:label}));},
+ async deviceStatus(deviceId,expectedUser=null){return learningRequest(expectedUser,c=>c.rpc('ew_device_status',{p_device_id:deviceId}));},
 };

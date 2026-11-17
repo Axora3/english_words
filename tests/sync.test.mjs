@@ -67,9 +67,9 @@ test('an invalid cloud document is never applied to the device',async()=>{
  server.row={state:{version:1,learned:{'no-such':{}}},revision:9,updated_at:''};const before=copy(d.state);
  await d.engine.syncNow();assert.equal(d.status(),'error');assert.deepEqual(d.state,before);
 });
-test('forgetting the account link clears sync metadata but keeps learning data',async()=>{
+test('sign-out preserves the owner metadata so learning data never becomes unowned guest data',async()=>{
  const server=fakeServer(),local=fresh();markLearned(local,'1',at);const d=device(server,local);d.engine.setUser(user);await d.engine.syncNow();await d.engine.choose('use-device');
- d.engine.forget();assert.equal(d.status(),'signed-out');assert.equal(d.storage.getItem(SYNC_KEYS.META),null);assert.ok(d.state.learned['1']);
+ d.engine.forget();assert.equal(d.status(),'signed-out');assert.equal(JSON.parse(d.storage.getItem(SYNC_KEYS.META)).userId,user.id);assert.equal(d.engine.presyncState(),null);assert.ok(d.state.learned['1']);
 });
 
 test('an account taken over by another device stops syncing and says why',async()=>{

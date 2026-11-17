@@ -39,20 +39,23 @@ export class CommunityUI {
 
   async run(action, fn) {
     if (this.busy) return;
+    const owner=this.user?.id,operation={};this.operation=operation;
+    const guard=()=>{if(this.user?.id!==owner||this.operation!==operation)throw Object.assign(Error('Account changed'),{code:'stale-account'});};
     this.busy = action; this.message = null; this.ctx.render();
-    try { await fn(); } catch (e) {
+    try { await fn(guard); } catch (e) {
+      if(e?.code==='stale-account'||this.operation!==operation)return;
       const offline = !navigator.onLine || /failed to fetch|network|load failed/i.test(e?.message || '');
       this.message = {text: offline ? this.L('needsInternet') : e?.message || String(e), tone: 'tone-danger'};
-    } finally { this.busy = ''; this.ctx.render(); }
+    } finally { if(this.operation===operation){this.busy = ''; this.ctx.render();} }
   }
 
   /** Publishes this device's progress, then reads the board back. Safe to call on every visit. */
   async load({handle = null, force = false} = {}) {
     if (!this.user || (this.board && !force)) return;
-    await this.run('load', async () => {
-      this.stats = await community.syncProfile(handle);
-      this.board = await community.leaderboard(50);
-      this.device = await community.deviceStatus(this.ctx.deviceId()).catch(() => null);
+    await this.run('load', async guard => {
+      const stats = await community.syncProfile(handle,this.user.id);guard();this.stats=stats;
+      const board = await community.leaderboard(50);guard();this.board=board;
+      const device = await community.deviceStatus(this.ctx.deviceId()).catch(() => null);guard();this.device=device;
       this.draftHandle = null;
     });
   }
@@ -60,9 +63,9 @@ export class CommunityUI {
   async click(action, value) {
     if (action === 'community-refresh') { await this.load({force: true}); return true; }
     if (action === 'community-claim') {
-      await this.run('claim', async () => {
-        await community.claimDevice(this.ctx.deviceId(), deviceLabel());
-        this.device = await community.deviceStatus(this.ctx.deviceId());
+      await this.run('claim', async guard => {
+        await community.claimDevice(this.ctx.deviceId(), deviceLabel(),this.user.id);guard();
+        const device = await community.deviceStatus(this.ctx.deviceId(),this.user.id);guard();this.device=device;
         this.message = {text: this.L('deviceClaimed'), tone: 'tone-mint'};
         this.ctx.sync()?.syncNow?.();
       });
