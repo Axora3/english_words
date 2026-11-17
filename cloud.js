@@ -1,6 +1,7 @@
 // Supabase access layer. Loaded lazily; does nothing when the build has no cloud configuration.
 // Uses only the public anon/publishable key; every table is protected by Row Level Security.
 // Auth uses the PKCE flow so email links return with ?code=… and never collide with #hash routes.
+import {validateProfile,pendingAvatar,clearPendingAvatar} from './profile.js';
 let client=null,loading=null,config;
 
 export async function cloudConfig(){
@@ -23,14 +24,15 @@ export async function getClient(){
 }
 
 const redirectTo=hash=>location.origin+location.pathname+(hash||'#account');
-function check({data,error}){if(error)throw Object.assign(Error(error.message||'Request failed'),{code:error.code||error.status||'error'});return data;}
+function check({data,error}){if(error)throw Object.assign(Error(error.message||'Request failed'),{code:error.code||error.status||'error',status:error.status});return data;}
 const need=async()=>{const c=await getClient();if(!c)throw Object.assign(Error('Cloud sync is not configured.'),{code:'not-configured'});return c;};
 
 export const auth={
  async session(){const c=await getClient();if(!c)return null;return check(await c.auth.getSession()).session;},
  async onChange(fn){const c=await getClient();if(!c)return ()=>{};const {data}=c.auth.onAuthStateChange((event,session)=>fn(event,session));return ()=>data.subscription.unsubscribe();},
  async signIn(email,password){return check(await (await need()).auth.signInWithPassword({email,password}));},
- async signUp(email,password){return check(await (await need()).auth.signUp({email,password,options:{emailRedirectTo:redirectTo('#account')}}));},
+ async signUp(email,password,profile={}){return check(await (await need()).auth.signUp({email,password,options:{emailRedirectTo:redirectTo('#account'),data:{ew_profile:profile}}}));},
+ async resendConfirmation(email){return check(await (await need()).auth.resend({type:'signup',email,options:{emailRedirectTo:redirectTo('#account')}}));},
  async magicLink(email){return check(await (await need()).auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo('#account'),shouldCreateUser:true}}));},
  async resetPassword(email){return check(await (await need()).auth.resetPasswordForEmail(email,{redirectTo:redirectTo('#account')}));},
  async updatePassword(password){return check(await (await need()).auth.updateUser({password}));},
@@ -46,8 +48,19 @@ export const data={
  async listBackups(){return check(await (await need()).from('ew_cloud_backups').select('id,label,reason,words_learned,created_at').order('created_at',{ascending:false}).limit(30));},
  async getBackup(id){return check(await (await need()).from('ew_cloud_backups').select('state').eq('id',id).single()).state;},
  async deleteBackup(id){check(await (await need()).from('ew_cloud_backups').delete().eq('id',id));},
- async profile(){return check(await (await need()).from('ew_profiles').select('display_name,preferred_language,timezone').maybeSingle());},
- async saveProfile(fields){const c=await need(),{data:{user}}=await c.auth.getUser();check(await c.from('ew_profiles').upsert({id:user.id,...fields},{onConflict:'id'}));},
+ async profile(){return check(await (await need()).from('ew_profiles').select('display_name,first_name,last_name,nickname,avatar_data,preferred_language,timezone').maybeSingle());},
+ async saveProfile(fields,expectedUser=null){const c=await need(),{data:{user}}=await c.auth.getUser();if(!user||expectedUser&&user.id!==expectedUser)throw Error('Account changed. Try again.');check(await c.from('ew_profiles').upsert({...fields,id:user.id},{onConflict:'id'}));},
+ async initializeProfile(user){
+  const existing=await data.profile(),draft=validateProfile(user?.user_metadata?.ew_profile||{});
+  const avatar=pendingAvatar(user);
+  if(avatar){await data.saveProfile({avatar_data:avatar},user.id);clearPendingAvatar();}
+  if(!draft.error&&(!existing?.first_name||!existing?.last_name||!existing?.nickname)){
+   const fields=Object.fromEntries(Object.entries(draft.value).filter(([k])=>!existing?.[k]));
+   if(!existing?.display_name)fields.display_name=existing?.nickname||draft.value.nickname;
+   await data.saveProfile(fields,user.id);return {...existing,...fields,...(avatar?{avatar_data:avatar}:{})};
+  }
+  return avatar?{...existing,avatar_data:avatar}:existing;
+ },
 };
 
 /** Community layer: the public profile, the leaderboard and the one-active-device rule.

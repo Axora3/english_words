@@ -5,7 +5,7 @@ A bilingual (Mongolian/English) English-vocabulary and grammar learning app. Sig
 ```sh
 npm ci          # @supabase/supabase-js (runtime, vendored into dist/) + PGlite (tests only)
 npm run dev     # http://localhost:5173 (127.0.0.1 only); serves config.js, sw.js and the client
-npm test        # 104 tests: entry access, learning logic, merge/sync, PWA and database RLS
+npm test        # 110 tests: entry access, profiles, learning logic, merge/sync, PWA and database RLS
 npm run build   # clean static build in dist/ (deployed by Vercel), plus the Scriptable widget
 ```
 
@@ -39,6 +39,16 @@ Speech recognition compares the recognised word with the target; it **does not s
 - A 12-week activity heatmap (click a day to open it in the calendar), a 7-day chart and a 30-day trend.
 - CEFR progress, weak words, time by section, and the month/week calendar with per-day details.
 - Editable study goals, 18 achievements (announced with a notification-style message when earned), a daily challenge whose points can be claimed once, and a mistake tracker.
+
+### Registration and profile
+
+Registration asks for last name, first name, nickname, email, password and repeated password. Sign-in uses email. Known authentication errors are explained in Mongolian/English, including wrong credentials and unconfirmed email; confirmation emails can be requested again. Registration can also stage an optional photo locally until the account first signs in on that browser.
+
+**My profile** (`#profile`, sidebar or top-bar profile icon) edits names, nickname and a private profile photo. Raster images are limited to 2 MB before decoding, cropped to a 192 px JPEG thumbnail and stored privately in `ew_profiles`, under its existing owner-only RLS. Names/photos are not published to the leaderboard; only the nickname is public. Account switching clears profile drafts.
+
+The active-device check blocks the learning interface when another device owns the account. Visible online sessions check every 30 seconds; learning-state pushes also enforce the existing database device check. Offline devices cannot immediately detect a remote takeover.
+
+Purchase-based registration through Axora is a future phase; see [the integration plan](docs/axora-access-plan.md). This release does not enable a purchase gate.
 
 ### Players, levels and coins
 Sign in and the app publishes a small public profile: a name you choose, your level, XP, words learned, lessons and coins. **Sidebar → Players** (`#leaderboard`) shows that profile and the board of everyone else.
@@ -81,7 +91,7 @@ Sign in and the app publishes a small public profile: a name you choose, your le
 - **Signing out:** either keep the progress on this device (it becomes guest data) or remove it. Unsynced changes trigger a warning first.
 - **Deleting the account:** type `DELETE` to confirm. This deletes the account and all cloud data. You can keep a local copy.
 - **Cloud backups:** create, list, restore (with confirmation, after an automatic "before restore" backup) and delete. The newest 30 are kept.
-- **Schema:** `supabase/migrations/` holds two files — the sync schema and the community layer (`ew_public_stats`, `ew_coin_ledger`, the level/coin functions and the device rule). Both only create objects; run them in order in the Supabase SQL editor.
+- **Schema:** `supabase/migrations/` holds the sync schema, community layer and private profile fields. Apply them in filename order. Existing deployments need only the migrations they have not yet applied.
 
 ## Install the app (PWA)
 

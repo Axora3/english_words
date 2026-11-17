@@ -197,3 +197,19 @@ test('deleting the account removes the public row, the coins and the device clai
  assert.equal((await q('select count(*)::int n from public.ew_coin_ledger where user_id=$1',[C])).rows[0].n,0);
  assert.equal((await q('select count(*)::int n from public.ew_profiles where id=$1',[C])).rows[0].n,0);
 });
+
+test('extended profiles and photos remain private and reject oversized or active-content images',async()=>{
+ const E='55555555-5555-4555-8555-555555555555',F='66666666-6666-4666-8666-666666666666';
+ await addLogin(E);await addLogin(F);
+ await as(E,async()=>{
+  await q(`insert into public.ew_profiles(id,first_name,last_name,nickname,avatar_data) values ($1,'Бат','Болд','Бат_123','data:image/jpeg;base64,YQ==')`,[E]);
+  assert.equal((await q('select first_name,nickname,avatar_data from public.ew_profiles where id=$1',[E])).rows[0].nickname,'Бат_123');
+  await assert.rejects(q(`update public.ew_profiles set avatar_data='data:image/svg+xml;base64,YQ==' where id=$1`,[E]),/check constraint/);
+  await assert.rejects(q(`update public.ew_profiles set nickname='bad nickname' where id=$1`,[E]),/check constraint/);
+  await assert.rejects(q(`update public.ew_profiles set avatar_data=$1 where id=$2`,['data:image/png;base64,'+'A'.repeat(120001),E]),/check constraint/);
+ });
+ await as(F,async()=>{
+  assert.equal((await q('select * from public.ew_profiles where id=$1',[E])).rows.length,0);
+  assert.equal((await q(`update public.ew_profiles set first_name='Other' where id=$1`,[E])).affectedRows,0);
+ });
+});

@@ -26,4 +26,6 @@ test('entry mounts only authentication and installation and fails closed without
  assert.doesNotMatch(entryView(args),/a-auth-form/);
  assert.match(entryView(args),/auth-retry/);
  assert.doesNotMatch(entryView({...args,ready:false}),/a-auth-form/);
+ const blocked=entryView({...args,deviceBlocked:true});
+ assert.match(blocked,/community-claim/);assert.doesNotMatch(blocked,/a-auth-form/);
 });

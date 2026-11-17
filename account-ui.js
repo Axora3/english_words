@@ -4,6 +4,8 @@ import {icon} from './icons.js';
 import {u} from './labels.js';
 import {auth,data,cloudConfig} from './cloud.js';
 import {validBackup} from './backup.js';
+import {profileText,validateProfile,authErrorKey,readAvatar,validAvatar,stageAvatar,signupPhotoHelp} from './profile.js';
+import {community} from './cloud.js';
 import {button,pageHeader,sectionHeader,notice,badge,iconTile,segmented,esc} from './ui.js';
 
 export const syncIcon={'signed-out':'cloud','device':'device-mobile','idle':'cloud','synced':'cloud-check','syncing':'cloud-upload','pending':'cloud-upload','offline':'cloud-off','error':'cloud-off','needs-choice':'cloud'};
@@ -11,11 +13,12 @@ export const syncLabel={'signed-out':'localOnlyState','device':'deviceElsewhere'
 const tone={synced:'tone-mint',idle:'tone-mint',device:'tone-warning',syncing:'tone-accent',pending:'tone-accent',offline:'tone-warning',error:'tone-danger','needs-choice':'tone-warning','signed-out':''};
 
 export class AccountUI{
- constructor(ctx){this.ctx=ctx;this.configured=null;this.mode='signIn';this.busy='';this.message=null;this.backups=null;this.profile=null;this.recovery=false;this.draftEmail='';cloudConfig().then(c=>{this.configured=Boolean(c);ctx.render();});}
+ constructor(ctx){this.ctx=ctx;this.configured=null;this.mode='signIn';this.busy='';this.message=null;this.backups=null;this.profile=null;this.recovery=false;this.draftEmail='';this.signupDraft={};this.profileDraft={};this.avatarDraft=undefined;this.confirmationNeeded=false;cloudConfig().then(c=>{this.configured=Boolean(c);ctx.render();});}
+ P(k){return profileText(this.state,k);}
  get state(){return this.ctx.state();}get t(){return this.ctx.t();}L(k){return u(this.state,k);}
  say(text,tone=''){this.message={text,tone};this.ctx.render();}
- async run(action,fn){if(this.busy)return;this.busy=action;this.message=null;this.ctx.render();try{await fn();}catch(e){const m=e?.message||String(e);this.message={text:e?.code==='not-configured'?this.L('cloudOff'):!navigator.onLine?this.L('needsInternet'):/failed to fetch|network|load failed|fetch failed/i.test(m)?this.L('cloudUnreachable'):m,tone:'tone-danger'};}finally{this.busy='';this.ctx.render();}}
- async loadCloud(){if(!navigator.onLine)return;try{[this.backups,this.profile]=await Promise.all([data.listBackups(),data.profile()]);}catch{this.backups=this.backups||[];}this.ctx.render();}
+ async run(action,fn){if(this.busy)return;this.busy=action;this.message=null;this.ctx.render();try{await fn();}catch(e){const m=e?.message||String(e),key=authErrorKey(e);if(key==='emailNotConfirmed')this.confirmationNeeded=true;this.message={text:key?this.P(key):e?.code==='not-configured'?this.L('cloudOff'):!navigator.onLine?this.L('needsInternet'):/failed to fetch|network|load failed|fetch failed/i.test(m)?this.L('cloudUnreachable'):['PGRST204','42703'].includes(e?.code)?this.P('profileMigration'):m,tone:'tone-danger'};}finally{this.busy='';this.ctx.render();}}
+ async loadCloud(){const owner=this.ctx.sync()?.snapshot()?.user;if(!navigator.onLine){this.backups=[];this.message={text:this.L('needsInternet'),tone:'tone-warning'};this.ctx.render();return;}try{const [backups,profile]=await Promise.all([data.listBackups(),data.initializeProfile(owner)]);if(this.ctx.sync()?.snapshot()?.user?.id!==owner?.id)return;this.backups=backups;this.profile=profile;}catch(e){this.backups=this.backups||[];this.message={text:['PGRST204','42703'].includes(e?.code)?this.P('profileMigration'):e.message,tone:'tone-danger'};}this.ctx.render();}
  fmt(v){return v?`${this.ctx.dateLabel(v,{month:'short',day:'numeric',year:'numeric'})} · ${this.ctx.timeLabel(v)}`:this.L('never');}
  btnBusy(action){return this.busy===action?'aria-busy="true" disabled':this.busy?'disabled':'';}
 
@@ -34,9 +37,14 @@ export class AccountUI{
   const modes=entry?[['signIn','login'],['signUp','user-circle']]:[['signIn','login'],['signUp','user-circle'],['magicLink','mail'],['forgot','key']];
   const tabs=segmented(modes.map(([k,ic])=>({label:L(k),ic,action:'a-mode:'+k,active:m===k})),{label:L('account')});
   return `<section class="panel auth-panel">${tabs}<form id="a-auth-form" class="auth-form" novalidate>
+   ${m==='signUp'?`<label class="field signup-photo"><span class="field-label">${this.P('photo')}</span>${this.signupAvatar?`<img class="signup-avatar" src="${esc(this.signupAvatar)}" alt="" width="64" height="64">`:''}<input class="input" type="file" name="signup_avatar" accept="image/jpeg,image/png,image/webp"><small class="key-hint">${signupPhotoHelp(this.state)}</small></label>`:''}
+   ${m==='signUp'?['last_name','first_name','nickname'].map((name,i)=>`<label class="field"><span class="field-label">${this.P(['lastName','firstName','nickname'][i])}</span><input class="input" name="${name}" autocomplete="${['family-name','given-name','nickname'][i]}" required maxlength="${name==='nickname'?24:60}" value="${esc(this.signupDraft[name]||'')}"></label>`).join(''):''}
    <label class="field"><span class="field-label">${L('email')}</span><input class="input" type="email" name="email" autocomplete="email" inputmode="email" required maxlength="254" value="${esc(this.draftEmail||'')}"></label>
+   <p class="key-hint">${this.P('emailHelp')}</p>
    ${pw?`<label class="field"><span class="field-label">${L('password')}</span><input class="input" type="password" name="password" autocomplete="${m==='signUp'?'new-password':'current-password'}" required minlength="8" maxlength="72">${m==='signUp'?`<small class="key-hint">${L('passwordHint')}</small>`:''}</label>`:''}
+   ${m==='signUp'?`<label class="field"><span class="field-label">${this.P('repeatPassword')}</span><input class="input" type="password" name="password_repeat" autocomplete="new-password" required minlength="8" maxlength="72"></label>`:''}
    ${button(L(m==='forgot'?'sendReset':m==='magicLink'?'sendLink':m),{full:true,size:'lg',ic:m==='signUp'?'user-circle':m==='signIn'?'login':'mail',attrs:this.btnBusy('auth')})}
+   ${this.confirmationNeeded?button(this.P('resendConfirmation'),{action:'a-resend-confirm',kind:'secondary',type:'button',attrs:this.btnBusy('resend')}):''}
    ${entry?button(L('forgot'),{action:'a-mode:forgot',kind:'ghost',size:'sm',type:'button'}):''}
    ${!navigator.onLine?`<p class="key-hint">${icon('wifi-off')}${L('needsInternet')}</p>`:''}</form></section>`;}
  status(sync){const L=k=>this.L(k),s=sync.status;
@@ -53,13 +61,43 @@ export class AccountUI{
  backupsView(){const L=k=>this.L(k),reasons={'manual':'reasonManual','before-restore':'reasonBeforeRestore','before-replace':'reasonBeforeReplace','migration':'reasonMigration'};
   const list=this.backups===undefined?`<div class="skeleton-group"><span class="skeleton"></span><span class="skeleton"></span></div>`:!this.backups?.length?`<p class="muted-copy">${L('noBackups')}</p>`:`<ul class="backup-list">${this.backups.map(b=>`<li><div><strong>${this.fmt(new Date(b.created_at).getTime())}</strong><small>${badge(L(reasons[b.reason]||'reasonManual'))} <span class="num">${b.words_learned}</span> ${this.t('words')}${b.label?' · '+esc(b.label):''}</small></div><div class="form-actions">${button(L('restore'),{action:'a-restore:'+b.id,kind:'secondary',size:'sm',ic:'arrow-back-up',attrs:this.btnBusy('restore')})}${button('',{action:'a-backup-delete:'+b.id,kind:'ghost',size:'sm',ic:'trash',attrs:`aria-label="${esc(this.t('p.delete'))}" ${this.busy?'disabled':''}`})}</div></li>`).join('')}</ul>`;
   return `<section class="panel">${sectionHeader(L('cloudBackups'),{action:button(L('createBackup'),{action:'a-backup',ic:'cloud-upload',size:'sm',attrs:this.btnBusy('backup')+(navigator.onLine?'':' disabled')})})}${list}</section>`;}
- profileView(){const L=k=>this.L(k);return `<form id="a-profile-form" class="settings-group"><h2 class="group-title">${L('profile')}</h2><div class="group-body"><label class="setting-row"><span class="setting-copy"><strong>${L('displayName')}</strong></span><span class="setting-control"><input class="input" name="display_name" maxlength="80" value="${esc(this.profile?.display_name||'')}" autocomplete="nickname"></span></label><div class="group-foot">${button(this.t('p.save'),{ic:'check',size:'sm',attrs:this.btnBusy('profile')})}</div></div></form>`;}
+ profilePage(){
+  if(this.backups===null){this.backups=undefined;this.loadCloud();}
+  const head=pageHeader({title:this.P('profile'),sub:esc(this.ctx.sync()?.snapshot()?.user?.email||'')});
+  const message=this.message?notice(esc(this.message.text),{tone:this.message.tone,role:'status'}):'';
+  return head+message+this.profileView()+this.passwordForm(false)+this.signOutView(this.ctx.sync().snapshot());
+ }
+ profileView(){
+  const p={...this.profile,...this.profileDraft},avatar=this.avatarDraft===undefined?p.avatar_data:this.avatarDraft;
+  const photo=validAvatar(avatar||null)&&avatar?`<img src="${esc(avatar)}" alt="${esc(this.P('photo'))}" width="96" height="96">`:`<span aria-hidden="true">${esc((p.nickname||p.first_name||'?').slice(0,1).toUpperCase())}</span>`;
+  return `<form id="a-profile-form" class="settings-group"><h2 class="group-title">${this.P('profile')}</h2><div class="group-body">
+   <div class="profile-photo-row"><div class="profile-avatar">${photo}</div><div><label class="field"><span class="field-label">${this.P('photo')}</span><input class="input" type="file" name="avatar" accept="image/jpeg,image/png,image/webp" ${this.busy?'disabled':''}><small class="key-hint">${this.P('photoHelp')}</small></label>${avatar?button(this.P('removePhoto'),{action:'a-remove-photo',kind:'ghost',size:'sm',type:'button'}):''}</div></div>
+   ${['last_name','first_name','nickname'].map((name,i)=>`<label class="setting-row"><span class="setting-copy"><strong>${this.P(['lastName','firstName','nickname'][i])}</strong></span><span class="setting-control"><input class="input" name="${name}" required maxlength="${name==='nickname'?24:60}" autocomplete="${['family-name','given-name','nickname'][i]}" value="${esc(p[name]||'')}"></span></label>`).join('')}
+   <div class="group-foot">${button(this.t('p.save'),{ic:'check',size:'sm',attrs:this.btnBusy('profile')})}</div></div></form>`;
+ }
+ input(target){
+  const name=target.name;
+  if(target.closest('#a-auth-form')&&['first_name','last_name','nickname'].includes(name)){this.signupDraft[name]=target.value;return true;}
+  if(target.closest('#a-profile-form')&&['first_name','last_name','nickname'].includes(name)){this.profileDraft[name]=target.value;return true;}
+  return false;
+ }
+ async change(target){
+  if(target.name==='signup_avatar'&&target.closest('#a-auth-form')){
+   const file=target.files?.[0];if(file)await this.run('photo',async()=>{try{this.signupAvatar=await readAvatar(file);}catch(e){throw Error(this.P(e.message));}});
+   return true;
+  }
+  if(target.name!=='avatar'||!target.closest('#a-profile-form'))return false;
+  const file=target.files?.[0];if(file)await this.run('photo',async()=>{try{this.avatarDraft=await readAvatar(file);}catch(e){throw Error(this.P(e.message));}});
+  return true;
+ }
  passwordForm(recovery){const L=k=>this.L(k);return `<form id="a-password-form" class="settings-group"><h2 class="group-title">${L(recovery?'setNewPassword':'security')}</h2><div class="group-body"><label class="setting-row"><span class="setting-copy"><strong>${L('newPassword')}</strong><small>${L('passwordHint')}</small></span><span class="setting-control"><input class="input" type="password" name="password" autocomplete="new-password" minlength="8" maxlength="72" required></span></label><div class="group-foot">${button(L('setNewPassword'),{ic:'key',size:'sm',attrs:this.btnBusy('password')})}</div></div></form>`;}
  signOutView(sync){const L=k=>this.L(k);return `<section class="settings-group"><h2 class="group-title">${L('signOut')}</h2><div class="group-body">${sync.dirty?`<p class="group-note">${icon('alert-triangle')}${L('unsyncedWarn')}</p>`:''}<div class="setting-row"><span class="setting-copy"><strong>${L('signOutKeep')}</strong></span><span class="setting-control">${button(L('signOut'),{action:'a-signout:keep',kind:'secondary',size:'sm',ic:'logout',attrs:this.btnBusy('signout')})}</span></div><div class="setting-row"><span class="setting-copy"><strong>${L('signOutClear')}</strong></span><span class="setting-control">${button(L('signOut'),{action:'a-signout:clear',kind:'danger-ghost',size:'sm',ic:'logout',attrs:this.btnBusy('signout')})}</span></div></div></section>`;}
  deleteView(){const L=k=>this.L(k);return `<form id="a-delete-form" class="settings-group danger-group"><h2 class="group-title">${L('dangerZone')}</h2><div class="group-body"><p class="group-note">${icon('alert-triangle')}${L('deleteHelp')}</p><label class="setting-row"><span class="setting-copy"><strong>${L('deleteType')}</strong></span><span class="setting-control"><input class="input" name="confirm" autocomplete="off" spellcheck="false" required pattern="DELETE" aria-label="${esc(L('deleteType'))}"></span></label><label class="setting-row"><span class="setting-copy"><strong>${L('deleteKeepLocal')}</strong></span><span class="setting-control"><span class="switch"><input type="checkbox" role="switch" name="keepLocal" checked><span class="switch-track" aria-hidden="true"><span class="switch-thumb"></span></span></span></span></label><div class="group-foot">${button(L('deleteAccount'),{kind:'danger',ic:'trash',attrs:this.btnBusy('delete')})}</div></div></form>`;}
 
  async click(action,value){if(!action.startsWith('a-'))return false;const L=k=>this.L(k),sync=this.ctx.sync();
   if(action==='a-mode'){this.mode=value;this.message=null;this.ctx.render();}
+  else if(action==='a-resend-confirm'){if(!this.draftEmail){this.say(L('emailInvalid'),'tone-danger');return true;}await this.run('resend',async()=>{await auth.resendConfirmation(this.draftEmail.trim());this.message={text:this.P('confirmationSent'),tone:'tone-mint'};});}
+  else if(action==='a-remove-photo'){this.avatarDraft=null;this.ctx.render();}
   else if(action==='a-sync')await this.run('sync',()=>sync.syncNow());
   else if(action==='a-choose')await this.run('choose',async()=>{await sync.choose(value);this.backups=null;});
   else if(action==='a-presync-download'){const s=sync.presyncState();if(s)this.ctx.download(JSON.stringify(s,null,2),'english-words-before-sync.json');}
@@ -72,14 +110,28 @@ export class AccountUI{
  async submit(form){if(!form.id.startsWith('a-'))return false;const L=k=>this.L(k),f=new FormData(form);
   if(form.id==='a-auth-form'){const email=String(f.get('email')||'').trim(),password=String(f.get('password')||'');
    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){this.say(L('emailInvalid'),'tone-danger');return true;}
-   if((this.mode==='signIn'||this.mode==='signUp')&&password.length<8){this.say(L('passwordHint'),'tone-danger');return true;}
+   let registration;
+   if(this.mode==='signUp'){
+    registration=validateProfile(Object.fromEntries(f));
+    this.signupDraft={first_name:f.get('first_name'),last_name:f.get('last_name'),nickname:f.get('nickname')};
+    if(registration.error){this.say(this.P(registration.error),'tone-danger');return true;}
+    if(password!==String(f.get('password_repeat')||'')){this.say(this.P('passwordMismatch'),'tone-danger');return true;}
+   }
+   if((this.mode==='signIn'&&!password)||(this.mode==='signUp'&&password.length<8)){this.say(L('passwordHint'),'tone-danger');return true;}
+   this.draftEmail=email;
    await this.run('auth',async()=>{
     if(this.mode==='signIn'){await auth.signIn(email,password);}
-    else if(this.mode==='signUp'){const r=await auth.signUp(email,password);this.message={text:r.session?L('synced'):L('confirmEmail'),tone:''};if(!r.session)this.mode='signIn';}
+    else if(this.mode==='signUp'){const r=await auth.signUp(email,password,registration.value);if(this.signupAvatar){try{stageAvatar(r.user,email,this.signupAvatar);if(r.session)await data.initializeProfile(r.user);}catch{this.ctx.toast(this.P('photoUnreadable'));}}this.message={text:r.session?L('synced'):L('confirmEmail'),tone:''};this.confirmationNeeded=!r.session;if(!r.session)this.mode='signIn';}
     else if(this.mode==='magicLink'){await auth.magicLink(email);this.message={text:L('checkEmail'),tone:''};}
     else{await auth.resetPassword(email);this.message={text:L('checkEmail'),tone:''};}});}
   else if(form.id==='a-password-form'){const p=String(f.get('password')||'');if(p.length<8){this.say(L('passwordHint'),'tone-danger');return true;}await this.run('password',async()=>{await auth.updatePassword(p);this.recovery=false;this.ctx.toast(L('passwordUpdated'));});}
-  else if(form.id==='a-profile-form'){const name=String(f.get('display_name')||'').trim().slice(0,80);await this.run('profile',async()=>{await data.saveProfile({display_name:name||null,preferred_language:this.state.settings.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone?.slice(0,64)||null});this.profile={...this.profile,display_name:name};this.ctx.toast(L('saved2'));});}
+  else if(form.id==='a-profile-form'){
+   const validated=validateProfile(Object.fromEntries(f));if(validated.error){this.say(this.P(validated.error),'tone-danger');return true;}
+   const owner=this.ctx.sync()?.snapshot()?.user?.id;
+   const fields={...validated.value,display_name:validated.value.nickname,preferred_language:this.state.settings.language,timezone:Intl.DateTimeFormat().resolvedOptions().timeZone?.slice(0,64)||null};
+   if(this.avatarDraft!==undefined){if(!validAvatar(this.avatarDraft)){this.say(this.P('photoInvalid'),'tone-danger');return true;}fields.avatar_data=this.avatarDraft;}
+   await this.run('profile',async()=>{await data.saveProfile(fields,owner);this.profile={...this.profile,...fields};this.profileDraft={};this.avatarDraft=undefined;await community.syncProfile(fields.nickname);this.ctx.toast(this.P('saved'));});
+  }
   else if(form.id==='a-delete-form'){if(f.get('confirm')!=='DELETE'){this.say(L('deleteType'),'tone-danger');return true;}const keep=form.elements.keepLocal.checked;if(!confirm(L('deleteHelp')))return true;
    await this.run('delete',async()=>{const r=await auth.deleteAccount();await auth.signOut().catch(()=>{});this.ctx.sync().forget();this.backups=null;if(!keep)this.ctx.resetLocal();this.ctx.toast(L(r?.login_deleted===false?'dataDeletedLoginKept':'accountDeleted'));});}
   return true;}

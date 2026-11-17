@@ -63,10 +63,10 @@ function render(){
  if(locked){
   closeNav();document.body.classList.remove('focus-mode');document.body.dataset.page='account';
   if(authReady){route='account';if(location.hash!=='#account')history.replaceState(null,'',location.pathname+location.search+'#account');}
-  $('#app').innerHTML=entryView({state,account:accountUI,ready:authReady,error:authError,install:installSection()});
+  $('#app').innerHTML=entryView({state,account:accountUI,ready:authReady,error:authError,deviceBlocked,updateReady:pwaState().updateReady,install:installSection()});
   polishUI($('#app'),state,t);return;
  }
- const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),leaderboard:()=>communityUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
+ const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),profile:()=>accountUI.profilePage(),leaderboard:()=>communityUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
  if(!views[route])route='dashboard';
  document.body.dataset.page=route;
  const focusMode=(route==='review'&&reviewSession)||(route==='test'&&state.activeTest)||(route==='practice'&&platform.practice.question);
@@ -136,7 +136,7 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
   toast(ok?u(state,'testSent'):t('permissionHelp'),!ok);return;}
  if(action==='pwa-install'){const outcome=await promptInstall();if(outcome==='accepted')toast(u(state,'installed'));render();return;}
  if(action==='pwa-update'){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;persist({quiet:true});applyUpdate();return;}
- if(await communityUI.click(action,value))return;
+ if(await communityUI.click(action,value)){if(action==='community-claim')await verifyActiveDevice();return;}
  if(await accountUI.click(action,value))return;
  if(await platform.click(action,value))return;
  if(action==='go'){if(value!=='review'){reviewResult=null;}go(value);}
@@ -187,8 +187,8 @@ document.addEventListener('submit',async e=>{e.preventDefault();if(entryLocked()
  }if(e.target.id==='test-form'){const a=state.activeTest,q=a.questions[a.index];if(a.answers[a.index])return;const value=new FormData(e.target).get('answer')?.trim();if(!value)return;const correct=['fill','audio'].includes(q.type)?value.toLowerCase()===byId(q.id).word.toLowerCase():value===q.id;a.answers.push({value,correct});persist();render();$('[data-action="next-question"]')?.focus();return;}
  if(['settings-form','notification-form'].includes(e.target.id)){const form=e.target,fd=new FormData(form),old=state.settings,s={...old};for(const [key,val]of fd)s[key]=['dailyTarget','interval'].includes(key)?Number(val):val;for(const input of form.querySelectorAll('input[type="checkbox"]'))s[input.name]=input.checked;if(!validateSettings(s)){$('#settings-error').innerHTML=notice(t('invalidSettings'),{tone:'tone-danger',ic:'alert-triangle'});return;}state.settings=s;if(s.startTime!==old.startTime||s.interval!==old.interval||s.dailyTarget!==old.dailyTarget)rescheduleDay(state,words);settingsDirty=false;persist();if(s.notifications&&!old.notifications&&permission()==='default')await requestPermission();render();toast(t('saved'));}
 });
-document.addEventListener('input',e=>{if(communityUI.input(e.target))return;if(e.target.name==='email'&&e.target.closest('#a-auth-form')){accountUI.draftEmail=e.target.value;return;}if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
-document.addEventListener('change',async e=>{if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
+document.addEventListener('input',e=>{if(accountUI.input(e.target))return;if(communityUI.input(e.target))return;if(e.target.name==='email'&&e.target.closest('#a-auth-form')){accountUI.draftEmail=e.target.value;return;}if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
+document.addEventListener('change',async e=>{if(await accountUI.change(e.target))return;if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(settingsDirty&&!confirm(t('unsaved'))){history.replaceState(null,'','#'+route);return;}settingsDirty=false;route=target.split('/')[0];if(route==='details')detailId=target.split('/')[1]||detailId;revealed=route==='details';search='';filter='all';reviewResult=null;closeNav();render();window.scrollTo(0,0);});
 window.addEventListener('beforeunload',e=>{if(settingsDirty){e.preventDefault();e.returnValue='';}});
 window.addEventListener('storage',e=>{if(e.key!==KEY||!e.newValue)return;try{const data=JSON.parse(e.newValue);if(validBackup(data)){state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);if(!settingsDirty)render();}}catch{}});
@@ -204,11 +204,18 @@ const voicePractice=createSpeechPractice({scope:window,onChange(result){
 window.addEventListener('pagehide',()=>{voicePractice.stop(true);window.speechSynthesis?.cancel();});
 initPwa();onPwaChange(()=>{if(!settingsDirty)render();});
 // ---------- cloud account & sync (inactive unless the build has Supabase configuration) ----------
-let cloudEnabled=false,cloudStarted=false,authReady=false,authError='';
-function entryLocked(){return requiresEntry(authReady,syncEngine.snapshot().user,accountUI.recovery);}
+let cloudEnabled=false,cloudStarted=false,authReady=false,authError='',deviceBlocked=false;
+function entryLocked(){return requiresEntry(authReady,syncEngine.snapshot().user,accountUI.recovery)||deviceBlocked;}
+async function verifyActiveDevice(){
+ const user=syncEngine.snapshot().user;if(!user||!navigator.onLine)return;
+ try{const status=await community.deviceStatus(deviceId());if(syncEngine.snapshot().user?.id!==user.id)return;
+  if(!status.claimed)await community.claimDevice(deviceId(),deviceLabel());
+  const blocked=!status.active;if(blocked!==deviceBlocked){deviceBlocked=blocked;render();}
+ }catch(e){console.warn('Device status unavailable:',e.message);}
+}
 const communityUI=new CommunityUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},deviceId,sync:()=>syncEngine,dateLabel});
 const accountUI=new AccountUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},toast,persist,applyState,resetLocal,download:downloadFile,dateLabel,timeLabel,sync:()=>syncEngine});
-const syncEngine=createSyncEngine({api:{fetchState:()=>data.fetchState(),pushState:(s,b)=>data.pushState(s,b,deviceId()),createBackup:(s,r,l)=>data.createBackup(s,r,l)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
+const syncEngine=createSyncEngine({api:{fetchState:()=>data.fetchState(),pushState:(s,b)=>data.pushState(s,b,deviceId()),createBackup:(s,r,l)=>data.createBackup(s,r,l)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{if(snap.status==='device'){deviceBlocked=true;render();}const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
 function syncButton(snap=syncEngine.snapshot()){const s=snap.status,label=u(state,syncLabel[s]||'localOnlyState');return `<a class="icon-btn sync-indicator is-${s}" href="#account" aria-label="${esc(label)}" data-tooltip="${esc(label)}">${icon(syncIcon[s]||'cloud')}</a>`;}
 function syncView(){return syncButton();}
 function accountSummary(){if(!cloudEnabled)return `<section class="settings-group" id="set-account"><h2 class="group-title">${u(state,'account')}</h2><div class="group-body">${linkRow('#account',u(state,'localOnlyState'),{ic:'cloud-off',help:u(state,'cloudOff')})}</div></section>`;const snap=syncEngine.snapshot(),L=k=>u(state,k);return `<section class="settings-group" id="set-account"><h2 class="group-title">${L('account')}</h2><div class="group-body">${linkRow('#account',snap.user?esc(snap.user.email):L('guestTitle'),{ic:syncIcon[snap.status]||'cloud',help:snap.user?L(syncLabel[snap.status]||'synced'):L('signIn')+' · '+L('signUp'),meta:snap.user&&snap.lastSyncedAt?timeLabel(snap.lastSyncedAt):''})}</div></section>`;}
@@ -219,20 +226,21 @@ function installSection(){const p=pwaState(),L=k=>u(state,k),steps=(title,items,
  *  it finds out on its next push (the database refuses it) and can take it back from the Players
  *  screen. Failures are not fatal — learning keeps working without the community features. */
 async function claimThisDevice(){
- try{await community.claimDevice(deviceId(),deviceLabel());await community.syncProfile();}
+ try{await community.claimDevice(deviceId(),deviceLabel());deviceBlocked=false;await data.initializeProfile(syncEngine.snapshot().user).catch(e=>console.warn('Profile initialization unavailable:',e.message));await community.syncProfile();}
  catch(e){console.warn('Device claim unavailable:',e?.message||e);}
 }
 async function startCloud(){
  if(cloudStarted)return;cloudStarted=true;
  try{
-  const session=await auth.session();syncEngine.setUser(session?.user||null);
+  const session=await auth.session();syncEngine.setUser(session?.user||null);await verifyActiveDevice();
   await auth.onChange((event,session)=>{
-   const wasSignedIn=Boolean(syncEngine.snapshot().user);
+   const previousUser=syncEngine.snapshot().user,wasSignedIn=Boolean(previousUser);
    if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}
-   if(event==='SIGNED_OUT'){settingsDirty=false;accountUI.recovery=false;communityUI.stats=null;communityUI.board=null;syncEngine.setUser(null);}
+   if(event==='SIGNED_OUT'){deviceBlocked=false;accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;accountUI.backups=null;settingsDirty=false;accountUI.recovery=false;communityUI.stats=null;communityUI.board=null;syncEngine.setUser(null);}
    else if(session?.user)syncEngine.setUser(session.user);
    if(event==='SIGNED_IN'){
-    accountUI.backups=null;accountUI.message=null;communityUI.board=null;claimThisDevice();
+    if(previousUser?.id!==session?.user?.id){accountUI.profile=null;accountUI.profileDraft={};accountUI.avatarDraft=undefined;}
+    accountUI.backups=null;accountUI.message=null;communityUI.board=null;if(previousUser?.id!==session?.user?.id)claimThisDevice();
     if(!wasSignedIn&&!accountUI.recovery&&route==='account')go('dashboard');
    }
    if(!settingsDirty||!session?.user)render();
@@ -243,6 +251,7 @@ async function startCloud(){
 }
 cloudConfig().then(async cfg=>{cloudEnabled=Boolean(cfg);if(cfg){await startCloud();if(route==='leaderboard')communityUI.load();}else{authReady=true;render();}});
 window.addEventListener('hashchange',()=>{if(cloudEnabled&&/^#(account|leaderboard)/.test(location.hash)){startCloud();communityUI.load();}});
+setInterval(()=>{if(!document.hidden)verifyActiveDevice();},30000);
 setInterval(()=>{if(!document.hidden&&syncEngine.snapshot().user&&syncEngine.snapshot().dirty)syncEngine.syncNow();},120000);
 async function notifyTick(){if(entryLocked())return;const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
 setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
