@@ -41,7 +41,7 @@ Speech recognition compares the recognised word with the target; it **does not s
 - Editable study goals, 18 achievements (announced with a notification-style message when earned), a daily challenge whose points can be claimed once, and a mistake tracker.
 
 ### Vocabulary management
-- **Dictionary:** search by English or Mongolian, with filters by CEFR level, part of speech and collection. It remembers recent searches and recently opened words.
+- **Dictionary:** search by English or Mongolian, with filters by CEFR level, part of speech and collection. Results are ranked: the word you typed first, then words starting with it, then its meaning, then anything that merely mentions it; words of equal rank keep the A1-upwards order. It remembers recent searches and recently opened words.
 - **Collections:** create, edit (in a dialog) and delete; add or remove words; quiz and flashcards; JSON/CSV export named after the collection.
 - **Import:** CSV/JSON vocabulary import with a preview (valid / duplicate / invalid rows), limited to 5 MB and 5,000 words. Import only adds words. Collection exports can be re-imported.
 

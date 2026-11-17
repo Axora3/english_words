@@ -1,8 +1,21 @@
 import {test} from 'node:test';import assert from 'node:assert/strict';
-import {emptyState,markLearned} from '../core.js';import {migrateAdvanced,validAdvanced} from '../advanced-state.js';import {validBackup} from '../backup.js';import {activityDays,monthDays,longestStreak} from '../calendar.js';import {saveCollection,deleteCollection,collectionWord,collectionProgress} from '../collections.js';import {searchDictionary} from '../dictionary.js';import {saveGoals,goalProgress} from '../study-goals.js';import {weakWords} from '../weak-words.js';import {createWord} from '../vocabulary.js';
+import {emptyState,markLearned} from '../core.js';import {vocabulary} from '../vocabulary.js';import {migrateAdvanced,validAdvanced} from '../advanced-state.js';import {validBackup} from '../backup.js';import {activityDays,monthDays,longestStreak} from '../calendar.js';import {saveCollection,deleteCollection,collectionWord,collectionProgress} from '../collections.js';import {searchDictionary} from '../dictionary.js';import {saveGoals,goalProgress} from '../study-goals.js';import {weakWords} from '../weak-words.js';import {createWord} from '../vocabulary.js';
 const state=()=>{const s=emptyState();migrateAdvanced(s);return s;},at=new Date(2026,10,17,9).getTime();
 test('phase1 migration and custom vocabulary retain version-1 backup compatibility',()=>{const s=state();assert.ok(validAdvanced(s.advanced));assert.ok(validBackup(s));const old=emptyState();assert.ok(validBackup(old));const word=createWord({word:'firewall',meaning:'галт хана',partOfSpeech:'noun',level:'B2'});s.advanced.customWords.push(word);markLearned(s,word.id,at);assert.ok(validBackup(s));s.advanced.customWords.push({...word,id:'custom-other'});assert.equal(validBackup(s),false);});
 test('calendar derives only recorded actions without duplicating learned records',()=>{const s=state();markLearned(s,'1',at);s.reviews.push({id:'1',correct:true,at});s.advanced.time.push({id:'time-1',at,section:'learn',seconds:15});const d=activityDays(s)['2026-11-17'];assert.equal(d.newWords,1);assert.equal(d.reviewed,1);assert.equal(d.seconds,15);assert.equal(d.total,2);assert.equal(longestStreak(s),1);assert.equal(monthDays(2026,10).length,42);assert.equal(Object.keys(activityDays(emptyState())).length,0);});
 test('collections support safe CRUD, membership deduplication and progress',()=>{const s=state(),c=saveCollection(s,{name:'Work',description:'Office vocabulary',icon:'briefcase'});collectionWord(s,c.id,'1');collectionWord(s,c.id,'1');assert.equal(c.wordIds.length,1);markLearned(s,'1',at);assert.equal(collectionProgress(s,c).percent,100);saveCollection(s,{name:'Career',icon:'code'},c.id);assert.equal(c.name,'Career');deleteCollection(s,c.id);assert.ok(s.learned['1']);assert.equal(s.advanced.collections.length,0);});
 test('dictionary includes bilingual, synonym, level and collection queries',()=>{const s=state();assert.ok(searchDictionary(s,'азтай').some(w=>w.id==='1'));assert.ok(searchDictionary(s,'fortune').some(w=>w.id==='1'));assert.ok(searchDictionary(s,'',{level:'A1'}).every(w=>w.level==='A1'));const c=saveCollection(s,{name:'Work',icon:'book'});collectionWord(s,c.id,'1');assert.ok(searchDictionary(s,'Work').some(w=>w.id==='1'),'a collection name finds its words');});
+test('the word you typed is the first result',()=>{
+ const s=state();
+ const first=q=>searchDictionary(s,q)[0];
+ assert.equal(first('go').word,'go','an exact word beats every word that merely contains it');
+ assert.equal(first('good').word,'good');
+ assert.equal(first('learn').word,'learn');
+ const partial=searchDictionary(s,'frien');
+ assert.ok(partial[0].word.startsWith('frien'),'a prefix comes before a word that mentions it elsewhere');
+ const mongolian=searchDictionary(s,'ном');
+ assert.ok(mongolian.length&&mongolian[0].translation.includes('ном'),'searching the meaning works the same way');
+ const all=searchDictionary(s,'');
+ assert.deepEqual(all.map(w=>w.word),vocabulary(s).map(w=>w.word),'an empty query keeps the vocabulary order');
+});
 test('goals do not change schedules, weak words do not alter manual difficult flags',()=>{const s=state(),before={...s.settings};saveGoals(s,{dailyNew:1,dailyReview:1,dailyQuiz:1,weeklyWords:1,weeklyMinutes:1});markLearned(s,'1',at);assert.equal(goalProgress(s,new Date(at))[0].done,true);assert.deepEqual(s.settings,before);s.reviews.push({id:'1',correct:false,at});assert.equal(weakWords(s,at)[0].errors,1);assert.deepEqual(s.difficult,[]);});
