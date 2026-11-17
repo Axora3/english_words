@@ -17,7 +17,10 @@ http.createServer(async(req,res)=>{try{
  if(path==='/config.js'){res.writeHead(200,headers(types['.js'])).end(config());return;}
  if(path==='/sw.js'){res.writeHead(200,headers(types['.js'])).end(await serviceWorker());return;}
  if(path==='/vendor/supabase.js'){res.writeHead(200,headers(types['.js'])).end(await readFile(VENDOR));return;}
- const file=resolve(root,'.'+(path==='/'?'/index.html':path));
+ // Browsers ask for /favicon.ico on their own, however the page declares its icons; vercel.json
+ // maps it the same way in production, so neither place logs a 404 for it.
+ const requested=path==='/'?'/index.html':path==='/favicon.ico'?'/icons/favicon-32.png':path;
+ const file=resolve(root,'.'+requested);
  if(!file.startsWith(root+'\\')&&!file.startsWith(root+'/')||/[\\/](node_modules|\.git|supabase|tests)([\\/]|$)|[\\/]\.env/.test(file.slice(root.length))){res.writeHead(403).end();return;}
  const data=await readFile(file);res.writeHead(200,headers(types[extname(file)]||'application/octet-stream'));res.end(data);
 }catch{res.writeHead(404).end('Not found');}}).listen(port,'127.0.0.1',()=>console.log(`English Words is ready at http://localhost:${port}`));
