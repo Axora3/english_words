@@ -12,7 +12,10 @@ export async function shellFiles(dir){
  const code=root.filter(f=>(f.endsWith('.js')||f.endsWith('.css'))&&!NOT_SHIPPED.has(f));
  const fonts=(await readdir(join(dir,'assets/fonts'))).filter(f=>f.endsWith('.ttf')).sort().map(f=>'assets/fonts/'+f);
  const icons=(await readdir(join(dir,'icons'))).filter(f=>/\.(png|svg)$/.test(f)).sort().map(f=>'icons/'+f);
- return ['index.html','manifest.webmanifest','icon.svg',...code,...fonts,...icons];
+ // Adaptive Card template + fallback data for the Windows 11 widget (the .js export lives here too,
+ // but it is generated at build time and the browser never loads it).
+ const widgets=(await readdir(join(dir,'widgets')).catch(()=>[])).filter(f=>f.endsWith('.json')).sort().map(f=>'widgets/'+f);
+ return ['index.html','manifest.webmanifest','icon.svg',...code,...fonts,...icons,...widgets];
 }
 
 /** Short content hash over the shell files; changes whenever any shipped byte changes. */

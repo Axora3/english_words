@@ -5,7 +5,7 @@ This is a real Scriptable Home Screen widget, not a Safari shortcut. Install the
 ## Монгол заавар
 
 1. iPhone-ийн App Store-оос **Scriptable** суулгана.
-2. Вэб апп → **Профайл → iPhone виджет** хэсэгт орж өөрийн ахицтай кодыг татах эсвэл хуулна. Энэ хавтасны `English Words.js` нь шинэ, ахицгүй хэрэглэгчийн анхны хувилбар. Windows-оос файлаа iCloud Drive, OneDrive эсвэл өөрийн дамжуулах аргаар iPhone руу хүргэнэ.
+2. Вэб апп → **Тохиргоо → Виджет ба нүүр дэлгэц → iPhone · iPad** хэсэгт орж өөрийн ахицтай кодыг татах эсвэл хуулна. Энэ хавтасны `English Words.js` нь шинэ, ахицгүй хэрэглэгчийн анхны хувилбар. Windows-оос файлаа iCloud Drive, OneDrive эсвэл өөрийн дамжуулах аргаар iPhone руу хүргэнэ.
 3. Scriptable → **+** → файлын кодыг бүхлээр нь хуулж оруулаад **English Words** гэж нэрлэнэ. Нэг удаа ажиллуулж **Виджет харах** сонгоно.
 4. iPhone-ийн нүүр дэлгэцийн хоосон зайг удаан дарах → **Edit → Add Widget** (эсвэл **+**) → **Scriptable** → **Small / Medium** хэмжээг нэмнэ.
 5. Виджетийг удаан дарах → **Edit Widget → Script → English Words**. **When Interacting → Run Script** сонгоно.
@@ -16,7 +16,7 @@ This is a real Scriptable Home Screen widget, not a Safari shortcut. Install the
 
 ## Progress and manual sync
 
-- The exported script includes the current web app snapshot and all 30 vocabulary entries. It makes no network requests and does not depend on `localhost` being reachable from your phone.
+- The exported script includes the current web app snapshot, every word your progress refers to, and the next 150 words of the schedule (not the whole vocabulary, which is thousands of entries — re-export every few weeks so the widget never runs out). It makes no network requests and does not depend on `localhost` being reachable from your phone.
 - Widget progress lives in Scriptable’s local Documents directory under `EnglishWordsWidget/progress.json`. Marking learned creates the same record shape as the app and cannot mark future/stale words.
 - **Widget → app:** run the script inside Scriptable, choose **Save a backup to import into the app** / **Аппд оруулах нөөц хуулбар хадгалах**, save the JSON to Files, transfer it if needed, then use the web app’s **Settings → Import backup**. App import replaces that browser’s state after confirmation.
 - **App → widget:** export updated script code and replace the code in the same Scriptable script. Run it and choose **Use the new snapshot**. Export the widget’s backup first if it contains changes you want to keep. Background refresh never silently replaces existing progress with a newly exported seed.

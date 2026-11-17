@@ -9,21 +9,23 @@ import {buildWidgetScript} from '../widget-export.js';
 
 const model=createWidgetModel();
 const morning=new Date(2026,10,16,9,0,0);
+// First words of the shipped vocabulary: stable ids, but the list grows, so they are read, not typed.
+const [first,second]=words;
 
 test('widget schedule matches the app before/after unlock and across a new day',()=>{
   const state=emptyState();
   ensureDay(state,words,morning);
   assert.equal(model.view(state,words,new Date(+morning-1)).status,'waiting');
   assert.equal(model.view(state,words,morning).word.id,nextWord(state,state.days[dayKey(morning)],+morning).id);
-  assert.equal(model.mark(state,words,'1',dayKey(morning),morning),true);
-  assert.equal(model.mark(state,words,'1',dayKey(morning),morning),false);
+  assert.equal(model.mark(state,words,first.id,dayKey(morning),morning),true);
+  assert.equal(model.mark(state,words,first.id,dayKey(morning),morning),false);
   assert.equal(model.view(state,words,morning).status,'waiting');
-  assert.equal(model.mark(state,words,'2',dayKey(morning),morning),false);
-  assert.equal(model.view(state,words,new Date(+morning+600000)).word.id,'2');
-  assert.equal(model.mark(state,words,'2','2026-11-15',new Date(+morning+600000)),false);
+  assert.equal(model.mark(state,words,second.id,dayKey(morning),morning),false);
+  assert.equal(model.view(state,words,new Date(+morning+600000)).word.id,second.id);
+  assert.equal(model.mark(state,words,second.id,'2026-11-15',new Date(+morning+600000)),false);
   const restored=JSON.parse(JSON.stringify(state));
   const tomorrow=new Date(2026,10,17,9);
-  assert.equal(model.view(restored,words,tomorrow).word.id,'2');
+  assert.equal(model.view(restored,words,tomorrow).word.id,second.id);
   assert.equal(validBackup(restored),true);
 });
 
@@ -89,13 +91,13 @@ test('widget tap actions speak, mark only the due word and export a valid manual
   const now=new Date(),state=emptyState();state.settings.startTime='00:00';state.settings.interval=1;
   ensureDay(state,words,now);
   const script=buildWidgetScript(state,now);
-  const speak=harness({params:{action:'speak',id:'1'}});
+  const speak=harness({params:{action:'speak',id:first.id}});
   await vm.runInContext(`(async()=>{${script}})()`,speak.context);
-  assert.deepEqual(speak.spoken,['serendipity']);
-  const learn=harness({params:{action:'learn',id:'1',day:dayKey(now)}});
+  assert.deepEqual(speak.spoken,[first.word]);
+  const learn=harness({params:{action:'learn',id:first.id,day:dayKey(now)}});
   await vm.runInContext(`(async()=>{${script}})()`,learn.context);
   const cache=JSON.parse(learn.files.get('/docs/EnglishWordsWidget/progress.json'));
-  assert.ok(cache.state.learned['1']);assert.equal(validBackup(cache.state),true);
+  assert.ok(cache.state.learned[first.id]);assert.equal(validBackup(cache.state),true);
   const backup=harness({cache,choices:[model.view(cache.state,words).word?3:1]});
   await vm.runInContext(`(async()=>{${script}})()`,backup.context);
   assert.equal(backup.exports.length,1);

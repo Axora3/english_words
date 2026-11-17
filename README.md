@@ -5,7 +5,7 @@ A bilingual (Mongolian/English) English-vocabulary and grammar learning app. It 
 ```sh
 npm ci          # @supabase/supabase-js (runtime, vendored into dist/) + PGlite (tests only)
 npm run dev     # http://localhost:5173 (127.0.0.1 only); serves config.js, sw.js and the client
-npm test        # 84 tests: learning logic, merge/sync, PWA, and migrations + RLS on real PostgreSQL
+npm test        # 92 tests: learning logic, merge/sync, PWA, and migrations + RLS on real PostgreSQL
 npm run build   # clean static build in dist/ (deployed by Vercel), plus the Scriptable widget
 ```
 
@@ -14,7 +14,7 @@ Cloud sync is enabled by two **public** environment variables, `SUPABASE_URL` an
 ## Features
 
 ### Learning
-- **Words:** 30 curated words, each with Mongolian meaning, IPA, part of speech, CEFR level, examples, synonyms, antonyms and usage notes. You can add your own words through CSV/JSON import.
+- **Words:** 4,511 words (A1–C2), each with Mongolian meaning, IPA, part of speech, CEFR level, an example sentence with its translation, a bilingual usage note, synonyms and antonyms. They are ordered A1 first, so the daily schedule works up the CEFR ladder. 30 are hand-written; the rest are generated into `words-data.js` by `tools/import-words.mjs` from a bulk export. The library lists them 60 at a time. You can add your own words through CSV/JSON import.
 - **Daily schedule:** one new word unlocks at a time. Defaults are five words, starting at 09:00, every ten minutes. Missed earlier words stay available. All of the day's unlock times must fit before midnight. Changing the schedule settings re-plans today without removing learned words.
 - **Spaced review:** correct recalls schedule the next review 1, 3, 7, 14, 30, then 60 days ahead; incorrect recalls retry after 10 minutes. New words are immediately reviewable. Keyboard: `Space` reveals, `1` = again, `2` = remembered.
 - **Daily test:** 6–10 randomized questions of six types, built only from learned words. Unfinished tests and results persist.
@@ -95,12 +95,16 @@ The service worker:
 
 There are three distinct mechanisms:
 1. **In-app reminders.** While the app is open (tab or installed app), it checks the schedule every second.
-2. **Browser notifications.** It shows those reminders as system notifications (through the service worker, or the Notification API), after opt-in and permission. Reminders older than one minute are not replayed; keys are de-duplicated across tabs.
+2. **Browser notifications.** It shows those reminders as system notifications (through the service worker, or the Notification API), after opt-in and permission. A reminder whose moment passed while the app was closed — or while a background tab had its timers throttled — is caught up the next time the app runs, but only the newest reminder of each kind is shown, so a long absence never produces a burst. Delivered keys are de-duplicated across tabs and pruned after a day. **Settings → Notifications → Send a test notification** checks the whole path end to end.
 3. **Remote Web Push** (reminders while the app is closed). **Not implemented.** It would need a push server, VAPID keys kept server-side, subscription storage and a scheduler. The app does not claim to remind you while it is closed.
 
-## iPhone widget
+## Widgets and the home screen
 
-Open **Settings → iPhone widget** to preview Small/Medium widgets, download a self-contained Scriptable script containing your progress, or copy its code. It runs offline, follows the same schedule and can mark a due word as learned. `npm run build` also writes a progress-free `widgets/English Words.js`; its `exportId` timestamp changes on every build. See [widgets/README.md](widgets/README.md) for setup and manual backup transfer. iOS controls the refresh timing.
+**Settings → Widget & home screen** has one tab per platform; it opens on the one you are using.
+
+- **Windows 11 (Microsoft Edge).** The installed app offers "English Words — today" in the Widgets Board (`Windows + W` → Add widgets). The board draws an Adaptive Card (`widgets/daily-card.json`), not HTML. A service worker cannot read `localStorage`, so the page builds the finished card (`widget-live.js`) and posts it to the worker, which caches it and calls `widgets.updateByTag()` on `widgetinstall`, `widgetresume` and `periodicsync`; tapping a button opens Learn or Review. The card therefore shows what the app last saw — open the app once a day. Windows Developer Mode must be on. This was built to Microsoft's documented API and covered by tests with a stubbed `self.widgets`; it has **not** been seen on a real Widgets Board.
+- **iPhone / iPad.** Preview Small/Medium widgets, then download a self-contained Scriptable script containing your progress, or copy its code. It runs offline, follows the same schedule and can mark a due word as learned. The script carries the words it needs plus the next 150 — not the whole vocabulary — so re-export it every few weeks. `npm run build` also writes a progress-free `widgets/English Words.js`. See [widgets/README.md](widgets/README.md) for setup and manual backup transfer. iOS controls the refresh timing.
+- **Android.** The web has no home-screen widget API. The page explains the nearest equivalent: install the app, use the icon's Learn/Review shortcuts, and turn reminders on.
 
 ## Security
 
@@ -124,15 +128,15 @@ The look is ink navy (`#202734`) with green actions (`#B7D894`) and pale-green t
 | Design system | `tokens.css`, `components.css`, `screens.css`, `ui.js` (component helpers), `icons.js`, `labels.js` (new bilingual labels), `i18n.js` + `platform-i18n.js` (dictionaries) |
 | Screens | `home.js`, `word-ui.js` (learn, detail, review, test, results, lists), `grammar-ui.js`, `practice-ui.js`, `progress-ui.js`, `platform-ui.js` (dictionary, collections, calendar, goals, weak words, More), `import-ui.js`, `widget-ui.js`, `voice-ui.js` |
 | Business logic | `core.js` (schedule, SRS, tests, notifications), `grammar.js`, `practice.js`, `writing.js`, `collections.js`, `dictionary.js`, `calendar.js`, `analytics.js`, `achievements.js`, `daily-challenge.js`, `study-goals.js`, `weak-words.js`, `mistakes.js`, `speech.js` |
-| Data & validation | `words.js`, `grammar-data.js`, `collocations.js`, `word-family.js`, `context-learning.js`, `vocabulary.js`, `vocabulary-import.js`, `backup.js`, `advanced-state.js` |
-| Widget | `widget-model.js`, `widget-runtime.js`, `widget-export.js` |
+| Data & validation | `words.js`, `words-data.js` (generated by `tools/import-words.mjs`), `grammar-data.js`, `collocations.js`, `word-family.js`, `context-learning.js`, `vocabulary.js`, `vocabulary-import.js`, `backup.js`, `advanced-state.js` |
+| Widget | `widget-model.js`, `widget-runtime.js`, `widget-export.js` (iPhone/Scriptable), `widget-live.js` + `widgets/daily-card.json` (Windows 11 Widgets Board) |
 | Cloud & sync | `cloud.js` (Supabase client, auth, data), `sync.js` (sync engine), `merge.js` (three-way merge), `account-ui.js` (Account & sync screen), `supabase/migrations/*.sql` |
 | PWA & offline | `pwa.js` (registration, update prompt, install), `sw.js` (template), `manifest.webmanifest`, `icons/` |
 | Tooling | `server.mjs`, `build.mjs`, `vercel.json`, `tools/env.mjs` (public config), `tools/app-files.mjs` (precache list and version), `tools/icons.mjs`, `tools/app-icons.mjs`, `tests/*.test.mjs` |
 
 ## Known limitations
 
-- Audio playback, microphone recognition, OS notification delivery and the widget on a physical iPhone depend on the device. They were not verified in this environment.
+- Audio playback, microphone recognition, OS notification delivery, the Scriptable widget on a physical iPhone and the tile on the Windows 11 Widgets Board depend on the device. They were not verified in this environment.
 - Offline behaviour was verified in a Chromium browser by stopping the server and using the app from its cache, and by service-worker tests. It was not tried on physical phones.
 - Cloud sync, authentication and RLS were verified against PGlite, an in-process PostgreSQL with Supabase-style roles, and with an in-memory server in the sync tests. They still need to be checked against your real Supabase project (see the DEPLOYMENT.md checklist).
 - Remote push notifications while the app is closed are not implemented.

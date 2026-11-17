@@ -1,4 +1,7 @@
-// Curated bilingual vocabulary. Learning and review records live separately.
+// Bilingual vocabulary shipped with the app. Learning and review records live separately.
+// The 30 curated rows below keep the ids they have always had, so progress saved before the base
+// vocabulary grew still points at the same words. The rest come from words-data.js.
+import {extraRows} from './words-data.js';
 const rows=[
 ['serendipity','азтай тохиолдол','/ˌser.ənˈdɪp.ə.ti/','noun','C1','Finding this book was pure serendipity.','Энэ номыг олсон нь цэвэр азтай тохиолдол байлаа.','chance, fortune','misfortune','An unexpected, fortunate discovery.','Санаандгүй тохиолдсон азтай нээлт.'],
 ['embrace','тэврэх; хүлээн авах','/ɪmˈbreɪs/','verb','B2','We should embrace new ideas.','Бид шинэ санааг хүлээн авах хэрэгтэй.','accept, welcome','reject','To accept something willingly; also to hold someone in your arms.','Аливаа зүйлийг дуртайяа хүлээн авах, мөн хэн нэгнийг тэврэх.'],
@@ -31,6 +34,13 @@ const rows=[
 ['tranquil','амар тайван','/ˈtræŋ.kwɪl/','adjective','C1','The lake was tranquil at dawn.','Үүрээр нуур амар тайван байлаа.','peaceful, calm','turbulent','Quiet, peaceful, and undisturbed.','Чимээгүй, тайван, амгалан.'],
 ['perseverance','шантрашгүй зан','/ˌpɜːr.səˈvɪr.əns/','noun','C2','Her perseverance helped her succeed.','Шантрашгүй зан нь түүнд амжилтад хүрэхэд тусалсан.','persistence, determination','surrender','Continuing to try despite difficulties.','Бэрхшээлтэй байсан ч үргэлжлүүлэн хичээх.']
 ];
-export const baseWords=rows.map((r,i)=>({id:String(i+1),word:r[0],translation:r[1],ipa:r[2],pos:r[3],level:r[4],example:r[5],exampleMn:r[6],synonyms:r[7].split(', '),antonyms:r[8].split(', '),usage:r[9],usageMn:r[10]}));
+const entry=(id,r,list)=>({id,word:r[0],translation:r[1],ipa:r[2],pos:r[3],level:r[4],example:r[5],exampleMn:r[6],synonyms:list(r[7]),antonyms:list(r[8]),usage:r[9],usageMn:r[10]});
+const split=value=>String(value).split(', ').filter(Boolean),keep=value=>Array.isArray(value)?value:split(value);
+const rank={A1:0,A2:1,B1:2,B2:3,C1:4,C2:5};
+/** Easiest first: CEFR level, then alphabetical. Daily words therefore start at A1. */
+/** The 30 hand-written rows on their own: tools/import-words.mjs checks new words against these. */
+export const curatedWords=rows.map((r,i)=>entry(String(i+1),r,split));
+export const baseWords=[...curatedWords,...extraRows.map((r,i)=>entry('w'+(i+1),r,keep))]
+ .sort((a,b)=>(rank[a.level]??9)-(rank[b.level]??9)||a.word.localeCompare(b.word,'en')||a.pos.localeCompare(b.pos));
 export const words=[...baseWords];
 export function setCustomWords(custom=[]){words.splice(0,words.length,...baseWords,...custom);}

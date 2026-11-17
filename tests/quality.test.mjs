@@ -16,6 +16,29 @@ import {button,iconButton,esc} from '../ui.js';
 const fresh=()=>{const s=emptyState();migrateAdvanced(s);return s;};
 const at=new Date(2026,10,17,10,0).getTime();
 
+// The base vocabulary is generated (tools/import-words.mjs) from a bulk export, so it is checked
+// here the way hand-written data never had to be: one entry per spelling, complete bilingual fields,
+// ids that stay put, and the CEFR ladder the daily schedule walks up.
+test('the shipped vocabulary is complete, unique and ordered from A1 upwards',()=>{
+ const levels=['A1','A2','B1','B2','C1','C2'];
+ assert.ok(words.length>4000,`expected the full vocabulary, got ${words.length}`);
+ assert.equal(new Set(words.map(w=>w.id)).size,words.length,'ids are unique');
+ assert.equal(new Set(words.map(w=>w.word.toLowerCase())).size,words.length,'a spelling appears once');
+ const pos=['noun','verb','adjective','adverb','pronoun','preposition','conjunction','determiner','interjection','phrase'];
+ for(const w of words){
+  for(const key of ['word','translation','ipa','example','exampleMn','usage','usageMn'])
+   assert.ok(typeof w[key]==='string'&&w[key].trim(),`${w.word}: ${key} is empty`);
+  assert.ok(levels.includes(w.level),`${w.word}: level ${w.level}`);
+  assert.ok(pos.includes(w.pos),`${w.word}: part of speech ${w.pos}`);
+  assert.ok(Array.isArray(w.synonyms)&&Array.isArray(w.antonyms),`${w.word}: relations`);
+ }
+ const ranks=words.map(w=>levels.indexOf(w.level));
+ assert.deepEqual(ranks,[...ranks].sort((a,b)=>a-b),'beginners meet A1 words first');
+ assert.ok(words.filter(w=>w.level==='A1').length>500,'there is a real A1 base to start from');
+ const curated=words.filter(w=>/^\d+$/.test(w.id));
+ assert.equal(curated.length,30,'the original hand-written words keep their ids, so old progress still resolves');
+});
+
 test('study time is stored as one record per day and section, preserving totals',()=>{
  const s=fresh();for(let i=0;i<40;i++)recordStudyTime(s,'learn',15,at+i*15000);recordStudyTime(s,'review',15,at);recordStudyTime(s,'learn',15,at+86400000);
  assert.equal(s.advanced.time.length,3);assert.equal(s.advanced.time.find(x=>x.section==='learn'&&dayKey(new Date(x.at))===dayKey(new Date(at))).seconds,600);

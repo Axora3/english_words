@@ -28,7 +28,14 @@ export function notificationEvents(state,day,now=Date.now()){
  if(state.settings.newNotifications)for(const x of schedule(day))if(!state.learned[x.id])events.push({key:`${key}:word:${x.id}`,type:'learn',at:x.at});
  if(state.settings.reviewNotifications&&dueWords(state,now).length)events.push({key:`${key}:review`,type:'review',at:atTime(new Date(now),state.settings.reviewTime)});
  if(state.settings.testNotifications&&!state.tests.some(t=>dayKey(new Date(t.finishedAt))===key)&&Object.keys(state.learned).length)events.push({key:`${key}:test`,type:'test',at:atTime(new Date(now),state.settings.testTime)});
- return events.filter(e=>e.at<=now&&now-e.at<60000&&!state.notified.includes(e.key));
+ // Everything whose moment has passed and that has not been delivered yet. A reminder used to be
+ // dropped a minute after its time, so anything that came due while the app was closed — or while a
+ // background tab had its timers throttled — was never shown at all. Now it is caught up on the next
+ // visit, but only the newest reminder of each kind is actually shown: the older ones come back
+ // marked stale so the caller can record them as handled without firing a burst of notifications.
+ const due=events.filter(e=>e.at<=now&&!state.notified.includes(e.key)).sort((a,b)=>a.at-b.at);
+ const newest=new Map();for(const e of due)newest.set(e.type,e.key);
+ return due.map(e=>newest.get(e.type)===e.key?e:{...e,stale:true});
 }
 
 /** Drops delivered-notification keys dated before yesterday. Keys without a date are kept. */

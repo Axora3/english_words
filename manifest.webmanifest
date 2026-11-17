@@ -19,6 +19,25 @@
     { "src": "./icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
     { "src": "./icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
+  "widgets": [
+    {
+      "name": "English Words — today",
+      "short_name": "Today's word",
+      "description": "Today's word and your daily progress on the Windows 11 Widgets Board.",
+      "tag": "english-words-daily",
+      "template": "english-words-daily",
+      "ms_ac_template": "./widgets/daily-card.json",
+      "data": "./widgets/daily-data.json",
+      "type": "application/json",
+      "auth": false,
+      "update": 900,
+      "multiple": false,
+      "screenshots": [
+        { "src": "./icons/widget-600x400.png", "sizes": "600x400", "label": "Today's word and daily progress", "platform": "windows" }
+      ],
+      "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ],
   "shortcuts": [
     { "name": "Review", "short_name": "Review", "url": "./#review", "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] },
     { "name": "Learn new words", "short_name": "Learn", "url": "./#learn", "icons": [{ "src": "./icons/icon-192.png", "sizes": "192x192" }] }

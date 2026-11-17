@@ -17,12 +17,14 @@ self.addEventListener('install',event=>{
 });
 
 self.addEventListener('activate',event=>{
- event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('english-words-')&&k!==SHELL&&k!==RUNTIME).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
+ event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('english-words-')&&k!==SHELL&&k!==RUNTIME&&k!==WIDGET_CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));
 });
 
 self.addEventListener('message',event=>{
  if(event.data?.type==='SKIP_WAITING')self.skipWaiting();
  if(event.data?.type==='GET_VERSION')event.ports?.[0]?.postMessage({version:VERSION,mode:MODE});
+ // The page owns the learning data (it lives in localStorage), so it sends the finished widget card.
+ if(event.data?.type==='WIDGET_DATA')event.waitUntil(saveWidgetPayload(event.data).then(()=>renderWidget()));
 });
 
 const scopeURL=path=>new URL(path,self.registration.scope).href;
@@ -53,4 +55,43 @@ self.addEventListener('fetch',event=>{
  event.respondWith(cacheFirst(request).catch(()=>Response.error()));
 });
 
-self.addEventListener('notificationclick',e=>{e.notification.close();const url=new URL(e.notification.data?.url||'./',self.registration.scope).href;e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(async clients=>{const client=clients.find(c=>new URL(c.url).origin===self.location.origin);if(client){await client.navigate(url);return client.focus();}return self.clients.openWindow(url);}));});
+
+/* ---------------- Windows 11 Widgets Board (Microsoft Edge PWA widgets) ----------------
+   The board renders an Adaptive Card. The page posts the finished card here (WIDGET_DATA); it is
+   kept in its own cache so the widget can still be drawn when the app is not running. Before the
+   app has ever run, the files named by the manifest are used instead. */
+const WIDGET_TAG='english-words-daily',WIDGET_CACHE='english-words-widget',WIDGET_KEY='./widget-payload.json';
+async function saveWidgetPayload(payload){
+ const cache=await caches.open(WIDGET_CACHE);
+ await cache.put(WIDGET_KEY,new Response(JSON.stringify({template:payload.template,data:payload.data}),{headers:{'Content-Type':'application/json'}}));
+}
+async function widgetPayload(definition){
+ const cache=await caches.open(WIDGET_CACHE),stored=await cache.match(WIDGET_KEY);
+ if(stored)return stored.json();
+ if(!definition?.msAcTemplate||!definition?.data)return null;
+ const [template,data]=await Promise.all([fetch(definition.msAcTemplate).then(r=>r.text()),fetch(definition.data).then(r=>r.text())]);
+ return {template,data};
+}
+async function renderWidget(widget){
+ if(!self.widgets)return;
+ const found=widget||await self.widgets.getByTag(WIDGET_TAG).catch(()=>null);
+ if(!found)return;
+ const payload=await widgetPayload(found.definition);
+ if(payload)await self.widgets.updateByTag(found.definition?.tag||WIDGET_TAG,payload);
+}
+self.addEventListener('widgetinstall',event=>event.waitUntil(renderWidget(event.widget)));
+self.addEventListener('widgetresume',event=>event.waitUntil(renderWidget(event.widget)));
+self.addEventListener('periodicsync',event=>{if(event.tag===WIDGET_TAG)event.waitUntil(renderWidget());});
+self.addEventListener('widgetclick',event=>{
+ const route=event.action==='open-review'?'#review':'#learn';
+ event.waitUntil(openApp(scopeURL('./')+route));
+});
+
+async function openApp(url){
+ const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+ const client=clients.find(c=>new URL(c.url).origin===self.location.origin);
+ if(client){await client.navigate(url).catch(()=>{});return client.focus();}
+ return self.clients.openWindow(url);
+}
+
+self.addEventListener('notificationclick',e=>{e.notification.close();const url=new URL(e.notification.data?.url||'./',self.registration.scope).href;e.waitUntil(openApp(url));});

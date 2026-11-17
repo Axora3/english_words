@@ -16,6 +16,7 @@ export const uiLabels={
  // vocabulary
  yourWords:['Your wordbook','Таны үгийн дэвтэр'],wordbookNote:['Find a word. Understand it. Make it yours.','Үгээ ол. Утгыг нь ойлго. Хэрэглэж сур.'],
  allLevels:['All levels','Бүх түвшин'],results:['results','илэрц'],clearFilters:['Clear filters','Шүүлтүүр арилгах'],
+ showMore:['Show more words','Илүү олон үг үзэх'],
  statusNew:['New','Шинэ'],statusLearning:['Learning','Сурч байна'],statusMastered:['Mastered','Бататгасан'],statusDue:['Due','Давтах'],
  dictionaryTab:['Dictionary','Толь'],learnedTab:['Learned','Сурсан'],recentSearches:['Recent searches','Сүүлийн хайлт'],
  // word detail
@@ -56,7 +57,7 @@ export const uiLabels={
  dataManagement:['Data management','Өгөгдөл удирдах'],about:['About','Тухай'],version:['Version','Хувилбар'],manageNotifications:['Manage notifications','Мэдэгдэл тохируулах'],
  aboutText:['A focused, local-first English learning space. Your progress stays on this device; there is no account or cloud sync.','Англи хэл сурах төвлөрсөн орон зай. Таны ахиц энэ төхөөрөмжид хадгалагдана; бүртгэл, үүлэн синк байхгүй.'],
  credits:['Icons: Tabler Icons (MIT). Typeface: Inter (SIL OFL).','Дүрс тэмдэг: Tabler Icons (MIT). Үсгийн фонт: Inter (SIL OFL).'],
- widgetHelp:['Show your next word on the iPhone Home Screen with Scriptable.','Scriptable ашиглан iPhone-ийн нүүр дэлгэцэнд дараагийн үгээ харуулна.'],
+ widgetHelp:['Show your next word on the Windows Widgets Board, an iPhone Home Screen or an Android home screen.','Дараагийн үгээ Windows-ийн виджет самбар, iPhone эсвэл Андройдын нүүр дэлгэцэд харуул.'],
  goalsHelp:['Daily and weekly targets used for progress tracking.','Ахиц хэмжихэд ашиглах өдөр, долоо хоногийн зорилт.'],
  importHelp:['Add your own words from a CSV or JSON file.','CSV эсвэл JSON файлаас өөрийн үгсээ нэмнэ.'],
  resetHelp:['Restore default preferences. Learned words and history are kept.','Тохиргоог анхны байдалд оруулна. Сурсан үг, түүх хадгалагдана.'],
@@ -105,6 +106,26 @@ export const uiLabels={
  desktopTitle:['Desktop (Chrome or Edge)','Компьютер (Chrome эсвэл Edge)'],desktop1:['Click the install icon in the address bar, or the Install button above.','Хаягийн мөрөн дэх суулгах дүрс эсвэл дээрх “Суулгах” товчийг дарна.'],
  updateReady:['A new version of English Words is ready.','English Words-ийн шинэ хувилбар бэлэн боллоо.'],reloadUpdate:['Update now','Одоо шинэчлэх'],
  // misc
+ // widget
+ widgetPlatform:['Home screen & widgets','Нүүр дэлгэц ба виджет'],
+ widgetPlatformSub:['Keep today’s word in sight: pick where you want it.','Өнөөдрийн үгээ нүдэн дээрээ байлга: хаана харахаа сонго.'],
+ winWidgetPreview:['The Widgets Board shows this card, refreshed every time you use the app.','Виджет самбар энэ хөзрийг харуулна. Апп хэрэглэх бүрд шинэчлэгдэнэ.'],
+ winWidgetTitle:['Add it to the Windows 11 Widgets Board','Windows 11-ийн виджет самбарт нэмэх'],
+ winWidgetIntro:['Install English Words in Microsoft Edge, then pin the widget from the Widgets Board.','English Words-ийг Microsoft Edge дээр суулгаад, виджет самбараас виджетээ бэхлэнэ.'],
+ winStep1:['In Microsoft Edge, open the ⋯ menu → Apps → Install this site as an app.','Microsoft Edge дээр ⋯ цэс → Аппууд → Энэ сайтыг апп болгож суулгах гэж сонгоно.'],
+ winStep2:['Turn on Windows Developer Mode: Settings → System → For developers → Developer Mode.','Windows-ийн хөгжүүлэгчийн горимыг асаана: Тохиргоо → Систем → Хөгжүүлэгчдэд → Developer Mode.'],
+ winStep3:['Press Windows + W to open the Widgets Board, then choose “Add widgets”.','Windows + W товчоор виджет самбарыг нээгээд “Виджет нэмэх”-ийг сонгоно.'],
+ winStep4:['Find “English Words — today” in the list and add it.','Жагсаалтаас “English Words — today”-г олж нэмнэ.'],
+ winStep5:['Open the app once a day: the widget is refreshed from the app, so your word stays current.','Өдөрт нэг удаа аппаа нээгээрэй: виджет аппаас шинэчлэгддэг тул үг тань шинэ хэвээр байна.'],
+ winWidgetNote:['Windows 11 with Microsoft Edge only. Other browsers and Windows 10 ignore the widget — the app itself still works everywhere.','Зөвхөн Windows 11 дээрх Microsoft Edge. Бусад хөтөч болон Windows 10 виджетийг үл тоомсорлоно — апп өөрөө хаана ч ажиллана.'],
+ andWidgetPreview:['Android has no home-screen widget for web apps yet, but the app can sit on your home screen.','Андройд дээр вэб аппын нүүр дэлгэцийн виджет одоогоор байхгүй ч аппаа нүүр дэлгэцэндээ байрлуулж болно.'],
+ andWidgetTitle:['Put English Words on your Android home screen','English Words-ийг Андройд нүүр дэлгэцэндээ нэмэх'],
+ andWidgetIntro:['An installed app plus reminders gives you the same thing a widget would: the next word, on time.','Суулгасан апп дээр сануулга нэмбэл виджеттэй адил: дараагийн үг цагтаа ирнэ.'],
+ andStep1:['In Chrome or Edge, open the ⋮ menu → Add to Home screen.','Chrome эсвэл Edge дээр ⋮ цэс → Нүүр дэлгэцэд нэмэх.'],
+ andStep2:['Press and hold the icon: Learn and Review open straight from the shortcuts.','Дүрс дээр удаан дарвал Сурах, Давтах хоёр шууд нээгдэх товчлол гарч ирнэ.'],
+ andStep3:['Turn on reminders so the next word reaches you without opening the app first.','Сануулгаа асаавал аппаа нээлгүйгээр дараагийн үг тань мэдэгдэх болно.'],
+ andWidgetNote:['A real Android widget needs a native app. Everything else — offline use, reminders, the home-screen icon — already works.','Жинхэнэ Андройд виджетэд эх апп хэрэгтэй. Бусад нь — офлайн ажиллагаа, сануулга, нүүр дэлгэцийн дүрс — аль хэдийн ажиллаж байна.'],
+ testNotification:['Send a test notification','Туршилтын мэдэгдэл илгээх'],testSent:['Test notification sent','Туршилтын мэдэгдэл илгээлээ'],
  close:['Close','Хаах'],data:['Your data','Таны өгөгдөл'],studyGoals:['Study goals','Суралцах зорилго'],
  achievementUnlocked:['Achievement unlocked','Шинэ амжилт'],offlineTitle:['You are offline','Та офлайн байна'],challenge:['Daily challenge','Өдрийн сорилт'],points:['points','оноо'],
 };

@@ -6,8 +6,9 @@ import {updateAchievements} from './achievements.js';
 import {PlatformUI,platformRoutes} from './platform-ui.js';
 import {migrateAdvanced,recordStudyTime} from './advanced-state.js';
 import {setCustomWords} from './words.js';
-import { widgetPage } from './widget-ui.js';
+import { widgetPage, detectPlatform } from './widget-ui.js';
 import { buildWidgetScript } from './widget-export.js';
+import { publishWidget } from './widget-live.js';
 import {icon} from './icons.js';
 import {sidebar,topbar,bottomNav,routeTitle,brandMark} from './shell.js';
 import {homeView} from './home.js';
@@ -33,7 +34,7 @@ migrateAdvanced(state);setCustomWords(state.advanced.customWords);
 if(state.designVersion!==2){state.settings.theme='dark';state.designVersion=2;}
 // Per-device interface conveniences (not learning data, never part of backups).
 try{if(JSON.parse(localStorage.getItem(UI_KEY)||'{}').sidebarCollapsed)document.body.classList.add('sidebar-collapsed');}catch{}
-let widgetSize='medium',grammarLevel='',focusSearchNext=false,lastRoute='';
+let widgetSize='medium',widgetPlatform=detectPlatform(),grammarLevel='',focusSearchNext=false,lastRoute='';
 let t=translator(state.settings.language),route=location.hash.slice(1).split('/')[0]||'dashboard',revealed=route==='details',search='',filter='all',reviewSession=null,reviewResult=null,result=null,settingsDirty=false,lastSpoken='',todayKey=dayKey();
 const closeNav=()=>{document.body.classList.remove('nav-open');$('.mobile-menu')?.setAttribute('aria-expanded','false');};
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(document.body.classList.contains('nav-open')){closeNav();$('.mobile-menu')?.focus();}document.querySelectorAll('details.dropdown[open]').forEach(d=>{d.open=false;d.querySelector('summary')?.focus();});}});
@@ -43,7 +44,7 @@ const locale=()=>state.settings.language==='mn'?'mn-MN':'en-US';
 const dateLabel=(v,options={month:'short',day:'numeric'})=>{const d=new Date(v);if(state.settings.language==='mn')return `${options.year?d.getFullYear()+' он, ':''}${options.weekday?(options.weekday==='long'?['Ням','Даваа','Мягмар','Лхагва','Пүрэв','Баасан','Бямба']:['Ня','Да','Мя','Лх','Пү','Ба','Бя'])[d.getDay()]+', ':''}${d.getMonth()+1}-р сарын ${d.getDate()}`;return d.toLocaleDateString(locale(),options);};
 const timeLabel=v=>new Date(v).toLocaleTimeString(locale(),{hour:'2-digit',minute:'2-digit',hour12:false});
 const today=()=>ensureDay(state,words);
-function persist({quiet=false,fromCloud=false}={}){if(recoveryRaw!==null){storageFailed=true;return;}const earned=quiet?[]:updateAchievements(state);try{localStorage.setItem(KEY,JSON.stringify(state));storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);return;}if(!fromCloud)syncEngine?.markDirty(quiet);if(earned.length)announce(earned);}
+function persist({quiet=false,fromCloud=false}={}){if(recoveryRaw!==null){storageFailed=true;return;}const earned=quiet?[]:updateAchievements(state);try{localStorage.setItem(KEY,JSON.stringify(state));storageFailed=false;}catch{storageFailed=true;toast(t('storageError'),true);return;}if(!fromCloud)syncEngine?.markDirty(quiet);refreshWidget();if(earned.length)announce(earned);}
 /** Replaces the local document with one from the cloud (sync, restore). Validated by the caller. */
 function applyState(next,{dirty=false}={}){state={...emptyState(),...JSON.parse(JSON.stringify(next)),designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);reviewSession=null;reviewResult=null;result=null;recoveryRaw=null;persist({quiet:true,fromCloud:!dirty});if(!settingsDirty)render();}
 function resetLocal(){const fresh=emptyState();fresh.settings={...state.settings};fresh.designVersion=2;applyState(fresh,{dirty:false});}
@@ -56,7 +57,7 @@ function render(){
  if(voicePractice.isListening()){voicePractice.stop(true);voiceResult={...voiceResult,status:'stopped'};}
  t=translator(state.settings.language);document.documentElement.lang=state.settings.language;document.documentElement.dataset.theme=state.settings.theme;document.body.classList.toggle('compact',state.settings.compact);
  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',state.settings.theme==='light'?'#FCF0DA':'#202734');
- const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
+ const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
  if(!views[route])route='dashboard';
  document.body.dataset.page=route;
  const focusMode=(route==='review'&&reviewSession)||(route==='test'&&state.activeTest)||(route==='practice'&&platform.practice.question);
@@ -92,7 +93,7 @@ function settingsPage(){const L=k=>u(state,k),sections=[['account','cloud',L('ac
 function permission(){return 'Notification' in window?Notification.permission:'unsupported';}
 function notificationsPage(){const p=permission(),tone={granted:'tone-mint',denied:'tone-danger',default:'tone-warning',unsupported:''}[p];
  return `<a class="back-link" href="#settings">${icon('arrow-left')}<span>${t('settings')}</span></a>${pageHeader({title:t('notificationTitle'),sub:t('notificationSub')})}<div class="settings-content narrow">
-  <section class="permission-panel">${iconTile('bell','listening')}<div><strong>${t('permission')}</strong><p>${t('permissionHelp')}</p></div>${badge(t(p),tone)}${state.settings.notifications&&p==='default'?button(t('enable'),{action:'permission',kind:'secondary',size:'sm'}):''}</section>
+  <section class="permission-panel">${iconTile('bell','listening')}<div><strong>${t('permission')}</strong><p>${t('permissionHelp')}</p></div>${badge(t(p),tone)}${p==='default'?button(t('enable'),{action:'permission',kind:'secondary',size:'sm'}):''}${p==='granted'?button(u(state,'testNotification'),{action:'notify-test',kind:'secondary',size:'sm',ic:'bell'}):''}</section>
   <form id="notification-form">
    <section class="settings-group"><div class="group-body">${toggle('master','notifications','masterHelp')}</div></section>
    <section class="settings-group"><h2 class="group-title">${t('scheduleSettings')}</h2><div class="group-body">${toggle('newNotify','newNotifications')}${field('startTime','startTime','time')}${toggle('reviewNotify','reviewNotifications')}${field('reviewTime','reviewTime','time')}${toggle('testNotify','testNotifications')}${field('testTime','testTime','time')}</div></section>
@@ -101,6 +102,15 @@ function notificationsPage(){const p=permission(),tone={granted:'tone-mint',deni
   </form>${notice(t('notificationLimit'))}</div>`;}
 async function speak(word,rate=.85,onStarted=null){voicePractice.stop();if(!('speechSynthesis' in window)){toast(t('unsupportedAudio'),true);return;}speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(word);utterance.lang='en-US';utterance.onstart=()=>{audioFeedback(true,state);onStarted?.();};utterance.onend=()=>audioFeedback(false,state);utterance.rate=rate;const voice=speechSynthesis.getVoices().find(v=>v.lang.startsWith('en'));if(voice)utterance.voice=voice;utterance.onerror=e=>{audioFeedback(false,state);if(!['interrupted','canceled'].includes(e.error))toast(t('audioError'),true);};speechSynthesis.speak(utterance);}
 function toggleArray(name,id){const a=state[name],index=a.indexOf(id);if(index===-1)a.push(id);else a.splice(index,1);persist();render();}
+/** Pushes today's card to the Windows 11 Widgets Board, at most once a second. Does nothing on
+ *  browsers without widgets, which today means every browser except Edge on Windows 11. */
+let widgetTimer=null;
+function refreshWidget(){clearTimeout(widgetTimer);widgetTimer=setTimeout(()=>{
+ publishWidget(state,words,{ready:t('newWords'),waiting:t('nextWord'),done:t('done'),waitingSub:t('waitingSub'),doneSub:t('allDoneSub'),open:u(state,'continue'),review:u(state,'review'),time:timeLabel});
+},1000);}
+/** Shows one notification through the service worker when there is one (so it survives a closed
+ *  tab) and through the page otherwise. Returns false when the browser refused it. */
+async function pushNotification(title,options){try{const reg=swRegistration();if(reg)await reg.showNotification(title,options);else new Notification(title,options);if(state.settings.vibration&&navigator.vibrate)navigator.vibrate([120,60,120]);return true;}catch{return false;}}
 async function requestPermission(){if(!('Notification' in window)){toast(t('unsupported'),true);return;}try{await Notification.requestPermission();render();}catch{toast(t('permissionHelp'),true);}}
 function saveUI(patch){try{localStorage.setItem(UI_KEY,JSON.stringify({...JSON.parse(localStorage.getItem(UI_KEY)||'{}'),...patch}));}catch{}}
 document.addEventListener('click',async e=>{const el=e.target.closest('[data-action]');if(!el)return;const [action,value]=el.dataset.action.split(':');
@@ -110,6 +120,9 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
  if(action==='focus-search'){if(route==='dictionary'||route==='library'){e.preventDefault();$('#p-query')?.focus();}else focusSearchNext=true;return;}
  if(action==='scroll-to'){e.preventDefault();$('#set-'+value)?.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'start'});return;}
  if(action==='grammar-level'){grammarLevel=value;render();$(`[data-action="grammar-level:${value}"]`)?.focus();return;}
+ if(action==='notify-test'){if(permission()!=='granted'){await requestPermission();return;}
+  const ok=await pushNotification('English Words',{body:t('notificationBody'),icon:'./icon.svg',tag:'english-words-test',silent:!state.settings.sound,data:{url:'./#dashboard'}});
+  toast(ok?u(state,'testSent'):t('permissionHelp'),!ok);return;}
  if(action==='pwa-install'){const outcome=await promptInstall();if(outcome==='accepted')toast(u(state,'installed'));render();return;}
  if(action==='pwa-update'){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;persist({quiet:true});applyUpdate();return;}
  if(await accountUI.click(action,value))return;
@@ -134,6 +147,7 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
  else if(action==='learned'){if(nextWord(state,today())?.id!==value)return;markLearned(state,value);persist();revealed=false;render();toast(t('learned')+': '+byId(value).word);}
  else if(action==='filter'){filter=value;render();}
  else if(action==='widget-size'){widgetSize=value==='small'?'small':'medium';render();}
+ else if(action==='widget-platform'){widgetPlatform=['ios','android','windows'].includes(value)?value:'windows';render();$(`[data-action="widget-platform:${widgetPlatform}"]`)?.focus();}
  else if(action==='widget-download'){
   const script=buildWidgetScript(state),url=URL.createObjectURL(new Blob([script],{type:'text/javascript;charset=utf-8'}));
   const link=document.createElement('a');link.href=url;link.download='English Words.js';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast(t('widgetDownloaded'));
@@ -195,7 +209,7 @@ cloudConfig().then(cfg=>{cloudEnabled=Boolean(cfg);if(!cfg)return;
  if(!settingsDirty)render();});
 window.addEventListener('hashchange',()=>{if(cloudEnabled&&location.hash.startsWith('#account'))startCloud();});
 setInterval(()=>{if(!document.hidden&&syncEngine.snapshot().user&&syncEngine.snapshot().dirty)syncEngine.syncNow();},120000);
-async function notifyTick(){const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};try{const reg=swRegistration();if(reg)await reg.showNotification(title,options);else new Notification(title,options);if(state.settings.vibration&&navigator.vibrate)navigator.vibrate([120,60,120]);}catch{toast(t('permissionHelp'),true);}};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
+async function notifyTick(){const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
 setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureDay(state,words);if(!settingsDirty)render();notifyTick();}});
 ensureDay(state,words);pruneNotified(state);persist();render();

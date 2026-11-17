@@ -1,6 +1,6 @@
 # Deployment — Supabase + Vercel + PWA
 
-This is the exact path from this repository to a production URL. The steps marked **(you)** need your accounts. Nothing here has been deployed yet, and no credentials exist in the repo.
+This is the exact path from this repository to a production URL. The steps marked **(you)** need your accounts. No credentials exist in the repo.
 
 ## Current production setup
 
@@ -11,7 +11,7 @@ This is the exact path from this repository to a production URL. The steps marke
 ## 0. What you need
 
 - A Supabase account (the free tier is enough) and a Vercel account, both signing in with GitHub.
-- The GitHub repo `Axora3/english_words` (already set as `origin`). It is currently empty.
+- The GitHub repo `Axora3/english_words` (already set as `origin`).
 - Node.js 20+ locally (`npm ci`, `npm test`, `npm run build`).
 
 ## 1. Create the Supabase project **(you)**
@@ -78,7 +78,7 @@ Then open a pull request into `main` on GitHub. `main` currently only has the pr
 | Item | How to verify | Status |
 | --- | --- | --- |
 | Production build passes | `npm run build` (CI on Vercel) | ✅ locally |
-| Unit / integration tests | `npm test`: 84 tests, including migrations and RLS on real PostgreSQL (PGlite) | ✅ locally |
+| Unit / integration tests | `npm test`: 92 tests, including migrations and RLS on real PostgreSQL (PGlite) | ✅ locally |
 | Env vars configured | Vercel → Settings → Environment Variables | ⏳ you |
 | Migration applied | Supabase → Table Editor shows 3 tables, all marked "RLS enabled" | ⏳ you |
 | RLS verified on the real project | Sign in as two different test users; each sees only their own row | ⏳ after setup |
@@ -89,6 +89,7 @@ Then open a pull request into `main` on GitHub. `main` currently only has the pr
 | Offline | DevTools "Offline", reload: learn, review, grammar work | ✅ locally (server stopped) |
 | HTTPS | Automatic on Vercel | ⏳ |
 | Install on Android / iPhone / desktop | See README "Install the app" | ⏳ needs devices |
+| Windows 11 widget | Install in Edge, then `Windows + W` → Add widgets → "English Words — today" | ⏳ needs Windows 11 + Developer Mode |
 | Production URL | Opens, no console errors | ⏳ |
 
 ## 6. Recovery and backups

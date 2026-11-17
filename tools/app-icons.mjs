@@ -20,38 +20,39 @@ function flatten(cmds,s,ox,oy){const polys=[];let cur=[],px=0,py=0;const P=(x,y)
  if(cur.length)polys.push(cur);return polys;}
 
 // Coverage mask (0..1 per pixel) for polygons using non-zero winding and SS×SS supersampling.
-function coverage(polys,size,SS=4){const cov=new Float32Array(size*size),edges=[];
+function coverage(polys,width,height=width,SS=4){const cov=new Float32Array(width*height),edges=[];
  for(const poly of polys)for(let i=0;i<poly.length;i++){const [x0,y0]=poly[i],[x1,y1]=poly[(i+1)%poly.length];if(y0!==y1)edges.push([x0,y0,x1,y1,y1>y0?1:-1]);}
- for(let sy=0;sy<size*SS;sy++){const y=(sy+.5)/SS,xs=[];for(const [x0,y0,x1,y1,w] of edges){if((y>=Math.min(y0,y1))&&(y<Math.max(y0,y1)))xs.push([x0+(y-y0)/(y1-y0)*(x1-x0),w]);}
-  xs.sort((a,b)=>a[0]-b[0]);let wind=0;for(let i=0;i<xs.length-1;i++){wind+=xs[i][1];if(!wind)continue;const a=Math.max(0,xs[i][0]*SS),b=Math.min(size*SS,xs[i+1][0]*SS);for(let sx=Math.ceil(a-.5);sx<b-.5;sx++){if(sx<0)continue;cov[Math.floor(sy/SS)*size+Math.floor(sx/SS)]+=1/(SS*SS);}}}
+ for(let sy=0;sy<height*SS;sy++){const y=(sy+.5)/SS,xs=[];for(const [x0,y0,x1,y1,w] of edges){if((y>=Math.min(y0,y1))&&(y<Math.max(y0,y1)))xs.push([x0+(y-y0)/(y1-y0)*(x1-x0),w]);}
+  xs.sort((a,b)=>a[0]-b[0]);let wind=0;for(let i=0;i<xs.length-1;i++){wind+=xs[i][1];if(!wind)continue;const a=Math.max(0,xs[i][0]*SS),b=Math.min(width*SS,xs[i+1][0]*SS);for(let sx=Math.ceil(a-.5);sx<b-.5;sx++){if(sx<0)continue;cov[Math.floor(sy/SS)*width+Math.floor(sx/SS)]+=1/(SS*SS);}}}
  return cov;}
 
-function render(size,{background,radius,logoScale}){
- const px=new Float32Array(size*size*4);
- const paint=(cov,color,alpha=1)=>{for(let i=0;i<size*size;i++){const a=Math.min(1,cov[i])*alpha;if(!a)continue;const x=i%size+.5,y=Math.floor(i/size)+.5,c=typeof color==='function'?color(x,y):color,o=i*4,da=px[o+3],oa=a+da*(1-a);for(let k=0;k<3;k++)px[o+k]=(c[k]*a+px[o+k]*da*(1-a))/(oa||1);px[o+3]=oa;}};
- if(background){const bg=gradient(0,0,0,size,[[0,'#2A3448'],[1,'#1B2230']]);paint(coverage(flatten(radius?roundRect(0,0,size,size,radius):[['M',0,0],['L',size,0],['L',size,size],['L',0,size],['Z']],1,0,0),size),bg);}
- const s=size*logoScale/72,ox=(size-72*s)/2,oy=(size-64*s)/2;
+function render(width,height,{background,radius,logoScale}){
+ const size=Math.max(width,height),px=new Float32Array(width*height*4);
+ const paint=(cov,color,alpha=1)=>{for(let i=0;i<width*height;i++){const a=Math.min(1,cov[i])*alpha;if(!a)continue;const x=i%width+.5,y=Math.floor(i/width)+.5,c=typeof color==='function'?color(x,y):color,o=i*4,da=px[o+3],oa=a+da*(1-a);for(let k=0;k<3;k++)px[o+k]=(c[k]*a+px[o+k]*da*(1-a))/(oa||1);px[o+3]=oa;}};
+ if(background){const bg=gradient(0,0,0,height,[[0,'#2A3448'],[1,'#1B2230']]);paint(coverage(flatten(radius?roundRect(0,0,width,height,radius):[['M',0,0],['L',width,0],['L',width,height],['L',0,height],['Z']],1,0,0),width,height),bg);}
+ const s=Math.min(width,height)*logoScale/72,ox=(width-72*s)/2,oy=(height-64*s)/2;
  const tr=(x,y)=>[(x-ox)/s,(y-oy)/s];
  const eFill=(x,y)=>{const [,ly]=tr(x,y);return gradient(0,8,0,54,[[0,'#36A6F8'],[1,'#2A80EC']])(0,ly);};
  const bFill=(x,y)=>{const [lx,ly]=tr(x,y);return gradient(67,4,34,60,[[0,'#8AEDF2'],[.55,'#45B4F5'],[1,'#2D86E8']])(lx,ly);};
- paint(coverage(E.flatMap(r=>flatten(r,s,ox,oy)),size),eFill);
- paint(coverage(flatten(BOOK,s,ox,oy),size),bFill);
- paint(coverage(flatten(SHINE,s,ox,oy),size),[255,255,255],.28);
+ paint(coverage(E.flatMap(r=>flatten(r,s,ox,oy)),width,height),eFill);
+ paint(coverage(flatten(BOOK,s,ox,oy),width,height),bFill);
+ paint(coverage(flatten(SHINE,s,ox,oy),width,height),[255,255,255],.28);
  return Buffer.from(Array.from(px,(v,i)=>i%4===3?Math.round(v*255):Math.round(v)));
 }
 
-function png(size,rgba){const crcTable=Array.from({length:256},(_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0;});
+function png(width,height,rgba){const crcTable=Array.from({length:256},(_,n)=>{let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;return c>>>0;});
  const crc=b=>{let c=0xFFFFFFFF;for(const x of b)c=crcTable[(c^x)&255]^(c>>>8);return (c^0xFFFFFFFF)>>>0;};
  const chunk=(type,data)=>{const len=Buffer.alloc(4);len.writeUInt32BE(data.length);const td=Buffer.concat([Buffer.from(type),data]);const c=Buffer.alloc(4);c.writeUInt32BE(crc(td));return Buffer.concat([len,td,c]);};
- const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(size,0);ihdr.writeUInt32BE(size,4);ihdr[8]=8;ihdr[9]=6;
- const raw=Buffer.alloc(size*(size*4+1));for(let y=0;y<size;y++){raw[y*(size*4+1)]=0;rgba.copy(raw,y*(size*4+1)+1,y*size*4,(y+1)*size*4);}
+ const ihdr=Buffer.alloc(13);ihdr.writeUInt32BE(width,0);ihdr.writeUInt32BE(height,4);ihdr[8]=8;ihdr[9]=6;
+ const raw=Buffer.alloc(height*(width*4+1));for(let y=0;y<height;y++){raw[y*(width*4+1)]=0;rgba.copy(raw,y*(width*4+1)+1,y*width*4,(y+1)*width*4);}
  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',ihdr),chunk('IDAT',deflateSync(raw,{level:9})),chunk('IEND',Buffer.alloc(0))]);}
 
 const out=new URL('../icons/',import.meta.url);await mkdir(out,{recursive:true});
 const specs=[
- ['icon-192.png',192,{background:true,radius:42,logoScale:.66}],      // purpose "any": rounded tile
- ['icon-512.png',512,{background:true,radius:112,logoScale:.66}],
- ['maskable-512.png',512,{background:true,radius:0,logoScale:.56}],    // full bleed, logo inside the 80% safe zone
- ['apple-touch-icon.png',180,{background:true,radius:0,logoScale:.62}], // iOS applies its own mask
- ['favicon-32.png',32,{background:false,logoScale:.98}]];
-for(const [name,size,opts] of specs){await writeFile(new URL(name,out),png(size,render(size,opts)));console.log('icons/'+name,size+'×'+size);}
+ ['icon-192.png',192,192,{background:true,radius:42,logoScale:.66}],      // purpose "any": rounded tile
+ ['icon-512.png',512,512,{background:true,radius:112,logoScale:.66}],
+ ['maskable-512.png',512,512,{background:true,radius:0,logoScale:.56}],    // full bleed, logo inside the 80% safe zone
+ ['apple-touch-icon.png',180,180,{background:true,radius:0,logoScale:.62}], // iOS applies its own mask
+ ['favicon-32.png',32,32,{background:false,logoScale:.98}],
+ ['widget-600x400.png',600,400,{background:true,radius:24,logoScale:.9}]];  // Windows Widgets Board preview
+for(const [name,width,height,opts] of specs){await writeFile(new URL(name,out),png(width,height,render(width,height,opts)));console.log('icons/'+name,width+'×'+height);}

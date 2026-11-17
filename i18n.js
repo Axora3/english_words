@@ -54,7 +54,7 @@ Object.assign(mn, {
     seeAll:'Бүгдийг харах',  
      });
 Object.assign(en, {
- widget:'iPhone widget', widgetTitle:'Your next word, on your Home Screen.', widgetSub:'An offline Scriptable widget that follows your daily vocabulary schedule.',
+ widget:'Widget & home screen', widgetTitle:'Your next word, on your Home Screen.', widgetSub:'An offline Scriptable widget that follows your daily vocabulary schedule.',
  widgetPreview:'Widget preview', widgetSize:'Widget size', widgetSizesmall:'Small', widgetSizemedium:'Medium', widgetPreviewNote:'Preview based on this device’s actual learning data. Home Screen rendering is handled by Scriptable.',
  widgetRefreshLimit:'iOS controls widget refresh timing. The widget requests an update, but cannot guarantee exact ten-minute updates. Tap it to run the script with the current time.',
  widgetInstallTitle:'Add it to your iPhone', widgetInstallIntro:'Install Scriptable on your iPhone, then add the script below. No Mac, Xcode or account connection is needed.',
@@ -69,7 +69,7 @@ Object.assign(en, {
  widgetPrivacy:'The script makes no network requests and stores progress inside Scriptable on your iPhone. Treat exported scripts/backups as personal learning data. Pronunciation opens Scriptable; it does not play directly inside the widget.',
  });
 Object.assign(mn, {
- widget:'iPhone виджет', widgetTitle:'Дараагийн үг тань нүүр дэлгэцэд.', widgetSub:'Өдрийн хуваарийг дагадаг, офлайн Scriptable виджет.',
+ widget:'Виджет ба нүүр дэлгэц', widgetTitle:'Дараагийн үг тань нүүр дэлгэцэд.', widgetSub:'Өдрийн хуваарийг дагадаг, офлайн Scriptable виджет.',
  widgetPreview:'Виджетийн урьдчилсан харагдац', widgetSize:'Виджетийн хэмжээ', widgetSizesmall:'Жижиг', widgetSizemedium:'Дунд', widgetPreviewNote:'Энэ төхөөрөмжийн бодит ахицад тулгуурласан жишээ. Нүүр дэлгэцэд Scriptable дүрслэнэ.',
  widgetRefreshLimit:'Шинэчлэх цагийг iOS удирдана. Виджет шинэчлэлт хүсэх боловч яг 10 минут тутам шинэчлэгдэхийг батлахгүй. Виджетийг дарвал тухайн үеийн цагаар скрипт ажиллана.',
  widgetInstallTitle:'iPhone дээрээ нэмээрэй', widgetInstallIntro:'iPhone дээрээ Scriptable суулгаад доорх скриптийг нэмнэ. Mac, Xcode эсвэл бүртгэл холбох шаардлагагүй.',

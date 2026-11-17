@@ -197,12 +197,15 @@
 .dictionary-controls .search-input input { height: 52px; font-size: 1.0625rem; border-radius: var(--r-lg); }
 .filter-row { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); flex-wrap: wrap; }
 .chip-filter { display: flex; gap: var(--s2); flex-wrap: wrap; }
-.filter-selects { display: flex; gap: var(--s3); flex-wrap: wrap; }
+.filter-selects { display: flex; gap: var(--s3); flex-wrap: wrap; min-width: 0; }
+.filter-selects .inline-field { min-width: 0; }
 .recent-searches { display: flex; align-items: center; gap: var(--s2); flex-wrap: wrap; }
 .recent-searches > span { display: inline-flex; align-items: center; gap: 6px; color: var(--text-3); font-size: var(--fs-caption); margin-right: var(--s1); }
 .recent-searches .ui-icon { width: 15px; height: 15px; }
 .recent-searches .chip { height: 28px; }
 .dictionary-layout { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: var(--s6); align-items: start; }
+.list-more { display: flex; flex-direction: column; align-items: center; gap: var(--s2); padding: var(--s5) 0 var(--s2); }
+.list-more .key-hint { margin: 0; }
 .list-head { display: flex; align-items: center; justify-content: space-between; min-height: 32px; margin-bottom: var(--s3); color: var(--text-3); font-size: var(--fs-caption); font-weight: 500; }
 .dictionary-aside { display: flex; flex-direction: column; gap: var(--s4); position: sticky; top: calc(var(--topbar-h) + var(--s5)); }
 .dictionary-aside .section-header h2 { font-size: var(--fs-card); }
@@ -370,15 +373,17 @@
 /* ============ Progress ============ */
 .stat-strip.wide { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .progress-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s4); }
-.heatmap { --cell: clamp(14px, 4.4vw, 22px); display: flex; flex-direction: column; gap: var(--s2); overflow-x: auto; padding-bottom: 2px; width: max-content; max-width: 100%; }
-.heat-months { display: grid; grid-template-columns: repeat(12, var(--cell)); gap: 4px; margin-left: 30px; color: var(--text-3); font-size: 10.5px; height: 14px; }
+.heatmap { --labels: 30px; --gap: 4px; display: flex; flex-direction: column; gap: var(--s2); width: 100%; max-width: 420px; }
+/* 12 fluid columns: the grid always fits its card, however narrow, so nothing spills over the
+   card edge and there is no sideways scrolling. */
+.heat-months { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); margin-left: calc(var(--labels) + 6px); color: var(--text-3); font-size: 10.5px; height: 14px; }
 .heat-months span { white-space: nowrap; overflow: visible; }
-.heat-body { display: flex; gap: 6px; }
-.heat-days { display: grid; grid-template-rows: repeat(7, var(--cell)); gap: 4px; width: 24px; color: var(--text-3); font-size: 10px; }
+.heat-body { display: flex; gap: 6px; align-items: stretch; }
+.heat-days { display: grid; grid-template-rows: repeat(7, 1fr); gap: var(--gap); width: var(--labels); color: var(--text-3); font-size: 10px; }
 .heat-days span { display: flex; align-items: center; }
-.heat-grid { display: grid; grid-template-columns: repeat(12, var(--cell)); gap: 4px; }
-.heat-week { display: grid; grid-template-rows: repeat(7, var(--cell)); gap: 4px; }
-.heat-cell { display: block; width: var(--cell); height: var(--cell); border-radius: 4px; background: var(--heat-0); transition: transform var(--d1) var(--ease), box-shadow var(--d1); }
+.heat-grid { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--gap); }
+.heat-week { display: grid; grid-template-rows: repeat(7, 1fr); gap: var(--gap); }
+.heat-cell { display: block; width: 100%; aspect-ratio: 1; border-radius: 4px; background: var(--heat-0); transition: transform var(--d1) var(--ease), box-shadow var(--d1); }
 button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--line-strong); }
 .heat-cell.i1 { background: color-mix(in srgb, var(--mint) 28%, var(--heat-0)); }
 .heat-cell.i2 { background: color-mix(in srgb, var(--mint) 52%, var(--heat-0)); }
@@ -388,7 +393,7 @@ button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--lin
 .heat-cell.is-today { box-shadow: 0 0 0 1.5px var(--text-2); }
 .heat-cell.is-selected { box-shadow: 0 0 0 2px var(--accent); }
 .heat-legend { display: flex; align-items: center; justify-content: flex-end; gap: 4px; color: var(--text-3); font-size: 10.5px; }
-.heat-legend .heat-cell { width: 11px; height: 11px; border-radius: 3px; }
+.heat-legend .heat-cell { width: 11px; height: 11px; aspect-ratio: auto; border-radius: 3px; }
 .heat-legend span { margin: 0 4px; }
 .cefr-rows { display: flex; flex-direction: column; gap: var(--s3); }
 .cefr-rows li { display: grid; grid-template-columns: 38px minmax(0, 1fr) 52px 40px; align-items: center; gap: var(--s3); font-size: var(--fs-caption); }
@@ -522,16 +527,16 @@ button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--lin
 .widget-layout { display: grid; grid-template-columns: minmax(0, 380px) minmax(0, 1fr); gap: var(--s6); align-items: start; }
 .widget-stage { display: flex; flex-direction: column; align-items: center; gap: var(--s4); padding: var(--s6); border-radius: var(--r-lg); background: radial-gradient(120% 90% at 50% 0%, var(--surface-3), var(--surface) 70%); border: 1px solid var(--line); }
 .widget-phone { display: grid; place-items: center; width: 100%; min-height: 240px; }
-.iphone-widget { display: flex; flex-direction: column; gap: 4px; padding: 16px; border-radius: 22px; background: #1C1C1E; color: #fff; box-shadow: 0 18px 40px -16px rgba(0,0,0,.6); font-family: -apple-system, 'SF Pro Text', var(--font); animation: rise var(--d3) var(--ease) both; }
-.iphone-widget.small { width: 170px; height: 170px; }
-.iphone-widget.medium { width: 100%; max-width: 340px; height: 160px; }
+.iphone-widget { display: flex; flex-direction: column; gap: 4px; overflow: hidden; padding: 16px; border-radius: 22px; background: #1C1C1E; color: #fff; box-shadow: 0 18px 40px -16px rgba(0,0,0,.6); font-family: -apple-system, 'SF Pro Text', var(--font); animation: rise var(--d3) var(--ease) both; }
+.iphone-widget.small { width: 170px; min-height: 170px; }
+.iphone-widget.medium { width: 100%; max-width: 340px; min-height: 160px; }
 .widget-native-header { display: flex; justify-content: space-between; font-size: 10px; font-weight: 700; letter-spacing: .06em; color: #8E8CF8; }
 .widget-native-header small { color: #8E8E93; font-size: 10px; }
 .widget-native-label { font-size: 10px; color: #8E8E93; margin-top: 4px; }
 .widget-native-word { font-size: 24px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .widget-native-word .ui-icon { width: 28px; height: 28px; color: #40D9B0; }
 .widget-native-ipa { font-size: 11px; color: #AEAEB2; }
-.widget-native-meaning { font-size: 13px; color: #E5E5EA; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.widget-native-meaning { font-size: 13px; color: #E5E5EA; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-bottom: 2px; }
 .widget-native-actions { display: flex; gap: 8px; margin-top: auto; font-size: 10.5px; font-weight: 600; }
 .widget-native-actions span { display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px; background: rgba(255,255,255,.1); }
 .widget-native-actions .ui-icon { width: 12px; height: 12px; }
@@ -613,8 +618,9 @@ button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--lin
   .chip-filter { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; margin: 0 calc(var(--gutter) * -1); padding: 2px var(--gutter); }
   .chip-filter::-webkit-scrollbar { display: none; }
   .chip-filter .chip { flex: none; }
-  .filter-selects .inline-field { flex: 1 1 140px; }
-  .filter-selects .select, .filter-selects select { width: 100%; }
+  .filter-selects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-selects .inline-field { flex-direction: column; align-items: stretch; gap: 4px; min-width: 0; }
+  .filter-selects .select, .filter-selects select { width: 100%; min-width: 0; }
   .page-actions { width: 100%; }
   .lesson-pager a { max-width: 50%; }
   .setting-row { flex-wrap: wrap; }
@@ -681,10 +687,12 @@ button.heat-cell:hover { transform: scale(1.18); box-shadow: 0 0 0 1px var(--lin
 .install-steps ol { list-style: decimal; padding-left: var(--s5); display: flex; flex-direction: column; gap: 4px; color: var(--text-2); font-size: var(--fs-caption); }
 .update-banner {
   position: fixed; z-index: 80; left: 50%; transform: translateX(-50%); bottom: calc(var(--s5) + env(safe-area-inset-bottom));
-  display: flex; align-items: center; gap: var(--s3); max-width: calc(100vw - 32px); padding: var(--s2) var(--s2) var(--s2) var(--s4);
+  display: flex; align-items: center; gap: var(--s3); width: max-content; max-width: calc(100vw - 32px); padding: var(--s2) var(--s2) var(--s2) var(--s4);
   border-radius: var(--r-lg); background: var(--surface-3); color: var(--text); box-shadow: var(--shadow-3); font-size: var(--fs-secondary); animation: rise var(--d3) var(--ease) both;
 }
 .update-banner > .ui-icon { width: 18px; height: 18px; color: var(--accent-text); }
+.update-banner > span { flex: 1; min-width: 0; }
+.update-banner .btn { flex: none; white-space: nowrap; }
 @media (max-width: 1023.98px) { .update-banner { bottom: calc(var(--bottomnav-h) + env(safe-area-inset-bottom) + var(--s3)); } }
 @media (max-width: 767.98px) { .compare-grid, .install-guide { grid-template-columns: minmax(0, 1fr); } }
 /* Installed PWA: the status bar overlaps content on iOS (black-translucent), keep the top bar clear of it. */
