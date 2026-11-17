@@ -46,6 +46,10 @@ export function widgetTemplate(card, labels) {
   return template;
 }
 
+let cardPromise = null;
+/** The shipped card, fetched once per session — publishing happens after every saved change. */
+const loadCard = () => cardPromise ??= fetch('./widgets/daily-card.json').then(r => r.json());
+
 /** Sends the current card to the service worker. Silently does nothing where widgets don't exist. */
 export async function publishWidget(state, words, labels, scope = globalThis) {
   const container = scope.navigator?.serviceWorker;
@@ -54,12 +58,12 @@ export async function publishWidget(state, words, labels, scope = globalThis) {
     const registration = await container.ready;
     const worker = registration.active;
     if (!worker) return false;
-    const card = await (await fetch('./widgets/daily-card.json')).json();
+    const card = await loadCard();
     worker.postMessage({
       type: 'WIDGET_DATA', tag: WIDGET_TAG,
       template: JSON.stringify(widgetTemplate(card, labels)),
       data: JSON.stringify(widgetData(widgetView(state, words), labels)),
     });
     return true;
-  } catch { return false; }
+  } catch { cardPromise = null; return false; }
 }
