@@ -86,7 +86,7 @@ returns integer language sql immutable set search_path = '' as $$
 $$;
 
 create or replace function public.ew_coin_balance(p_user uuid)
-returns integer language sql stable security definer set search_path = '' as $$
+returns integer language sql stable security invoker set search_path = '' as $$
   select coalesce(sum(amount), 0)::int from public.ew_coin_ledger where user_id = p_user
 $$;
 
@@ -107,6 +107,8 @@ begin
   if v_uid is null then
     raise exception 'not authenticated' using errcode = '28000';
   end if;
+  -- Serialize repeated requests so concurrent refreshes cannot award progress twice.
+  perform pg_advisory_xact_lock(hashtextextended(v_uid::text, 0));
   if p_handle is not null and (char_length(btrim(p_handle)) = 0 or char_length(p_handle) > 40 or p_handle ~ '[
 	]') then
     raise exception 'invalid handle' using errcode = '22023';
@@ -216,7 +218,7 @@ begin
     raise exception 'invalid learning state' using errcode = '22023';
   end if;
   select active_device_id into active from public.ew_profiles where id = uid;
-  if active is not null and p_device_id is not null and active <> p_device_id then
+  if active is not null and active is distinct from p_device_id then
     raise exception 'device not active' using errcode = 'P0001';
   end if;
   if p_base_revision = 0 then

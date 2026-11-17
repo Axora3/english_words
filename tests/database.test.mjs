@@ -153,6 +153,7 @@ test('the leaderboard is readable by every player, and nothing else about them i
   assert.deepEqual(rows.map(r=>r.handle),['Bat','Ana'],'both players are listed, strongest first');
   assert.equal((await q('select count(*)::int n from public.ew_learning_states where user_id=$1',[D])).rows[0].n,0,'their learning document stays private');
   assert.equal((await q('select count(*)::int n from public.ew_coin_ledger where user_id=$1',[D])).rows[0].n,0,'their coin history stays private');
+  assert.equal((await q('select public.ew_coin_balance($1) n',[D])).rows[0].n,0,'balance helper obeys the same owner policy');
   // The leaderboard is read-only to every client: only ew_sync_profile, which runs as the database
   // owner and derives the numbers itself, may write it.
   await assert.rejects(q(`update public.ew_public_stats set xp=999999, level=99 where user_id=$1`,[C]),/permission denied/,'a player cannot write their own row');
@@ -179,6 +180,7 @@ test('one active device: a new device takes over and the old one can no longer p
   assert.deepEqual(await claim('laptop','Laptop'),{device_id:'laptop',replaced:true});
   const now=(await q('select revision from public.ew_learning_states where user_id=$1',[D])).rows[0].revision;
   await assert.rejects(pushFrom('phone',progress(5,0,0),now),/device not active/,'the phone is locked out');
+  await assert.rejects(pushFrom(null,progress(5,0,0),now),/device not active/,'omitting the device cannot bypass the lock');
   assert.equal((await status('phone')).active,false);
   assert.equal((await status('laptop')).active,true);
   assert.equal((await pushFrom('laptop',progress(5,0,0),now)).status,'ok');
