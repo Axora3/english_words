@@ -15,28 +15,25 @@ export function startGrammar(state, now = new Date()) {
   return state.grammar;
 }
 
-// Calendar days avoid a one-hour drift when daylight-saving time changes.
-export function availableLessons(grammar, now = new Date()) {
+/** One lesson at a time: the course opens everything completed so far plus the next lesson, and
+ *  nothing beyond it. Finishing a lesson (both answers correct) is what unlocks the one after it.
+ *  Lessons completed out of order under the old weekly schedule keep their records; the course
+ *  continues from the first lesson that is still unfinished. */
+export function availableLessons(grammar) {
   if (!grammar) return 0;
-  const elapsed = calendarDay(dayKey(now)) - calendarDay(grammar.startedOn);
-  return Math.min(lessons.length, Math.max(0, Math.floor(elapsed / 7) + 1));
+  const pending = lessons.findIndex(lesson => !grammar.completed[lesson.id]);
+  return pending === -1 ? lessons.length : pending + 1;
 }
 
-export function lessonUnlockDate(grammar, index) {
-  const ordinal = calendarDay(grammar.startedOn) + index * 7;
-  const utc = new Date(ordinal * 86400000);
-  return new Date(utc.getUTCFullYear(), utc.getUTCMonth(), utc.getUTCDate());
-}
-
-export function currentLesson(grammar, now = new Date()) {
-  const available = availableLessons(grammar, now);
+export function currentLesson(grammar) {
+  const available = availableLessons(grammar);
   if (!available) return null;
   return lessons.slice(0, available).find(lesson => !grammar.completed[lesson.id]) || lessons[available - 1];
 }
 
 export function checkGrammar(state, id, answers, now = new Date()) {
   const index = lessons.findIndex(lesson => lesson.id === id);
-  if (index < 0 || index >= availableLessons(state.grammar, now)) return null;
+  if (index < 0 || index >= availableLessons(state.grammar)) return null;
   const lesson = lessons[index];
   if (!Array.isArray(answers) || answers.length !== lesson.questions.length
     || !answers.every((answer, i) => Number.isInteger(answer) && answer >= 0 && answer < lesson.questions[i].options.length)) return null;

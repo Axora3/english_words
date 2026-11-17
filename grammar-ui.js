@@ -1,7 +1,7 @@
 import {icon} from './icons.js';
 import {u} from './labels.js';
 import { lessons } from './grammar-data.js';
-import { levels, availableLessons, currentLesson, lessonUnlockDate } from './grammar.js';
+import { levels, availableLessons, currentLesson } from './grammar.js';
 import {button,pageHeader,sectionHeader,progressBar,progressRing,cefr,badge,quizOption,feedback,notice,iconTile,pct} from './ui.js';
 
 export function grammarPage(state, { t, esc, dateLabel, level: chosen }) {
@@ -11,9 +11,8 @@ export function grammarPage(state, { t, esc, dateLabel, level: chosen }) {
   const selected = selectedIndex >= 0 && selectedIndex < available ? lessons[selectedIndex] : null;
   if (selected) return lessonPage(selected, selectedIndex, state, { t, esc });
   const current = currentLesson(grammar), completed = grammar ? Object.keys(grammar.completed).length : 0;
-  const next = grammar && available < lessons.length ? lessonUnlockDate(grammar, available) : null;
+  const moreToUnlock = Boolean(grammar) && available < lessons.length;
   const level = chosen && levels.includes(chosen) ? chosen : current?.level || 'A1';
-  const fmt = d => dateLabel(d, {year: 'numeric', month: 'short', day: 'numeric'});
   const levelStats = levels.map(lv => { const group = lessons.filter(l => l.level === lv); return {lv, total: group.length, done: group.filter(l => grammar?.completed[l.id]).length}; });
   const ramp = `<ol class="level-ramp">${levelStats.map(s => `<li class="${s.lv === (current?.level || 'A1') ? 'is-current' : ''}">${cefr(s.lv)}${progressBar(pct(s.done, s.total), {label: s.lv, size: 'thin', tone: s.done === s.total ? 'tone-mint' : ''})}<small class="num">${s.done}/${s.total}</small></li>`).join('')}</ol>`;
   const hero = !grammar ? `<section class="course-hero">
@@ -21,14 +20,14 @@ export function grammarPage(state, { t, esc, dateLabel, level: chosen }) {
       <div class="course-side">${iconTile('school', 'context', {size: 'lg'})}</div>${ramp}</section>`
     : `<section class="course-hero">
       <div class="course-copy"><p class="eyebrow">${icon('calendar-event')}${L('thisWeek')}</p>${current ? `<p class="course-level">${cefr(current.level)}<span>${t('grammarWeek')} <b class="num">${lessons.indexOf(current) + 1}</b></span>${grammar.completed[current.id] ? badge(t('done'), 'tone-mint') : ''}</p><h2>${esc(current.title[state.settings.language])}</h2>` : ''}
-      <p class="muted-copy">${next ? `${t('grammarNext')}: <time>${fmt(next)}</time>` : t('grammarAllUnlocked')}</p>
+      <p class="muted-copy">${moreToUnlock ? t('grammarNext') : t('grammarAllUnlocked')}</p>
       <div class="hero-actions">${current ? button(t(grammar.completed[current.id] ? 'grammarRead' : 'grammarOpen'), {action: `go:grammar/${current.id}`, size: 'lg', iconEnd: 'arrow-right'}) : ''}</div></div>
       <div class="course-side">${progressRing(pct(completed, lessons.length), {size: 128, stroke: 10, label: `${t('grammarCompleted')}: ${completed}/${lessons.length}`, center: `<strong class="num">${completed}<span>/${lessons.length}</span></strong><small>${t('grammarCompleted')}</small>`})}<dl class="facts"><div><dt>${t('grammarAvailable')}</dt><dd class="num">${available}</dd></div></dl></div>${ramp}</section>`;
   const group = lessons.filter(l => l.level === level);
   const tabs = `<div class="segmented level-tabs" role="group" aria-label="${esc(L('levels'))}">${levelStats.map(s => `<button type="button" data-action="grammar-level:${s.lv}" class="${s.lv === level ? 'active' : ''}" aria-pressed="${s.lv === level}"><span>${s.lv}</span><b class="num">${s.done}/${s.total}</b></button>`).join('')}</div>`;
   const rows = group.map(lesson => {
     const index = lessons.indexOf(lesson), unlocked = Boolean(grammar) && index < available, done = Boolean(grammar?.completed[lesson.id]), isCurrent = current?.id === lesson.id;
-    const caption = done ? t('done') : unlocked ? t('available') : grammar ? `${t('grammarUnlock')} ${fmt(lessonUnlockDate(grammar, index))}` : t('locked');
+    const caption = done ? t('done') : unlocked ? t('available') : grammar ? t('grammarUnlock') : t('locked');
     const inner = `<span class="lesson-index num">${done ? icon('check') : index + 1}</span><span class="lesson-copy"><strong>${esc(lesson.title[state.settings.language])}</strong><small>${t('grammarWeek')} ${index + 1} · ${caption}</small></span>${isCurrent ? badge(L('thisWeek'), 'tone-accent') : ''}${unlocked ? icon('chevron-right') : icon('lock', {className: 'lesson-lock'})}`;
     return `<li class="lesson-row${done ? ' is-done' : ''}${isCurrent ? ' is-current' : ''}${unlocked ? '' : ' is-locked'}">${unlocked ? `<a href="#grammar/${lesson.id}">${inner}</a>` : `<div aria-disabled="true">${inner}</div>`}</li>`;
   }).join('');

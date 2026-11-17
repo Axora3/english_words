@@ -26,7 +26,7 @@ import { voicePanel } from './voice-ui.js';
 import { validBackup } from './backup.js';
 import {words} from './words.js';
 import {translator} from './i18n.js';
-import {defaults,emptyState,dayKey,ensureDay,pruneNotified,schedule,nextWord,markLearned,dueWords,reviewWord,streak,validateSettings,rescheduleDay,makeTest,scoreTest,notificationEvents} from './core.js';
+import {defaults,emptyState,dayKey,ensureDay,pruneNotified,schedule,nextWord,markLearned,dueWords,reviewQueue,reviewWord,streak,validateSettings,rescheduleDay,makeTest,scoreTest,notificationEvents} from './core.js';
 const $=s=>document.querySelector(s), KEY='lexi-v1', UI_KEY='english-words-ui';
 let state=emptyState(),storageFailed=false,recoveryRaw=null;
 try{const raw=localStorage.getItem(KEY);if(raw!==null){const saved=JSON.parse(raw);if(!validBackup(saved))throw Error('invalid');state={...emptyState(),...saved,settings:{...defaults,...saved.settings}};}}catch{storageFailed=true;try{recoveryRaw=localStorage.getItem(KEY);}catch{recoveryRaw='storage unavailable';}}
@@ -157,7 +157,7 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
   if(action==='widget-copy'){try{await navigator.clipboard.writeText(script);toast(t('widgetCopied'));return;}catch{toast(t('widgetCopyFailed'),true);}}
   const panel=document.querySelector('#widget-code-panel'),input=document.querySelector('#widget-source');panel.hidden=false;input.value=script;input.focus();input.select();
  }
- else if(action==='start-review'){reviewSession={ids:dueWords(state),index:0,correct:0};reviewResult=null;revealed=false;render();}
+ else if(action==='start-review'){reviewSession={ids:reviewQueue(state,words),index:0,correct:0};reviewResult=null;revealed=false;render();}
  else if(action==='review-answer'){if(!reviewSession||!revealed)return;reviewWord(state,reviewSession.ids[reviewSession.index],value==='1');reviewSession.correct+=Number(value);reviewSession.index++;if(reviewSession.index===reviewSession.ids.length){reviewResult={correct:reviewSession.correct,total:reviewSession.ids.length};reviewSession=null;}persist();revealed=false;render();}
  else if(action==='start-test'){state.activeTest=makeTest(words,Object.keys(state.learned));result=null;persist();go('test');}
  else if(action==='next-question'){const a=state.activeTest;if(!a?.answers[a.index])return;if(a.index===a.questions.length-1){a.finishedAt=Date.now();state.tests.push(a);result=a;state.activeTest=null;persist();go('results');}else{a.index++;persist();render();}}

@@ -33,8 +33,8 @@ export const uiLabels={
  reviewSteps:['See the word, recall the meaning, then reveal and answer honestly. Correct answers move the next review 1, 3, 7, 14, 30 and 60 days out.','Үгийг хараад утгыг нь санаад, дараа нь нээж үнэнээр хариулаарай. Зөв хариулт бүр дараагийн давтлагыг 1, 3, 7, 14, 30, 60 хоногоор хойшлуулна.'],
  question:['Question','Асуулт'],yourScore:['Your score','Таны оноо'],
  // grammar
- course:['Your grammar course','Таны дүрмийн хөтөлбөр'],thisWeek:['This week’s lesson','Энэ 7 хоногийн хичээл'],lesson:['Lesson','Хичээл'],levels:['Levels','Түвшин'],
- courseIntro:['One rule a week, from A1 to C1','Долоо хоногт нэг дүрэм — A1-ээс C1 хүртэл'],pattern:['Pattern','Бүтэц'],exercise:['Exercise','Дасгал'],
+ course:['Your grammar course','Таны дүрмийн хөтөлбөр'],thisWeek:['Current lesson','Одоогийн хичээл'],lesson:['Lesson','Хичээл'],levels:['Levels','Түвшин'],
+ courseIntro:['One rule at a time, from A1 to C1','Нэг нэгээр нь — A1-ээс C1 хүртэл'],pattern:['Pattern','Бүтэц'],exercise:['Exercise','Дасгал'],
  // practice
  choose:['Choose a practice','Дасгалаа сонгох'],modes:['modes','горим'],openPractice:['Open','Нээх'],
  listeningDesc:['Hear a sentence, then pick, type or complete what you heard.','Өгүүлбэр сонсоод сонгох, бичих, нөхөх дасгал.'],

@@ -4,7 +4,7 @@ import {u} from './labels.js';
 import {nextWord,schedule,dueWords,streak,dayKey} from './core.js';
 import {goalProgress} from './study-goals.js';
 import {ensureChallenge,challengeProgress} from './daily-challenge.js';
-import {currentLesson,availableLessons,lessonUnlockDate} from './grammar.js';
+import {currentLesson,availableLessons} from './grammar.js';
 import {lessons} from './grammar-data.js';
 import {button,progressRing,progressBar,sectionHeader,stat,iconTile,barChart,legend,esc} from './ui.js';
 
@@ -54,8 +54,8 @@ export function homeView(state,day,ctx){
  const goals=goalProgress(state).slice(0,3);
  const goalList=`<section class="rail-section">${sectionHeader(L('studyGoals'),{action:`<a class="icon-btn" href="#goals" aria-label="${esc(L('editGoals'))}" data-tooltip="${esc(L('editGoals'))}">${icon('edit')}</a>`})}<ul class="goal-list">${goals.map(g=>`<li><div class="goal-line"><span>${t('p.'+g.key)}</span><strong class="num">${g.value}<small> / ${g.target}</small></strong></div>${progressBar(g.percent,{label:t('p.'+g.key),tone:g.done?'tone-mint':'',size:'thin'})}</li>`).join('')}</ul></section>`;
  // Rail: grammar
- const g=state.grammar,lesson=currentLesson(g),avail=availableLessons(g),completed=g?Object.keys(g.completed).length:0,nextAt=g&&avail<lessons.length?lessonUnlockDate(g,avail):null;
- const grammar=`<section class="rail-section">${sectionHeader(L('grammarWeek'))}<a class="course-link" href="#grammar${lesson?'/'+lesson.id:''}">${iconTile('school','context')}<span><small>${lesson?`${lesson.level} · ${L('lesson')} ${lessons.indexOf(lesson)+1}`:'A1 → C1'}</small><strong>${lesson?esc(lesson.title[state.settings.language]):t('grammarStart')}</strong>${g?`<small class="num">${completed} / ${lessons.length} ${t('completed')}${nextAt?` · ${t('grammarNext')}: ${dateLabel(nextAt)}`:''}</small>`:''}</span>${icon('chevron-right')}</a></section>`;
+ const g=state.grammar,lesson=currentLesson(g),avail=availableLessons(g),completed=g?Object.keys(g.completed).length:0;
+ const grammar=`<section class="rail-section">${sectionHeader(L('grammarWeek'))}<a class="course-link" href="#grammar${lesson?'/'+lesson.id:''}">${iconTile('school','context')}<span><small>${lesson?`${lesson.level} · ${L('lesson')} ${lessons.indexOf(lesson)+1}`:'A1 → C1'}</small><strong>${lesson?esc(lesson.title[state.settings.language]):t('grammarStart')}</strong>${g?`<small class="num">${completed} / ${lessons.length} ${t('completed')}</small>`:''}</span>${icon('chevron-right')}</a></section>`;
  return `<div class="home">
   <header class="home-header"><p class="eyebrow">${greeting}</p><h1>${L('todayPlan')}</h1></header>
   <div class="home-grid"><div class="home-main">${hero}${stats}${week}</div><aside class="home-rail" aria-label="${esc(L('yourDay'))}">${timeline}${challenge}${goalList}${grammar}</aside></div>

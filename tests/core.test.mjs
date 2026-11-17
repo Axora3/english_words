@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {emptyState,ensureDay,schedule,nextWord,markLearned,reviewWord,dueWords,rescheduleDay,dayKey,streak,makeTest,scoreTest,notificationEvents,validateSettings} from '../core.js';
+import {emptyState,ensureDay,schedule,nextWord,markLearned,reviewWord,dueWords,reviewQueue,rescheduleDay,dayKey,streak,makeTest,scoreTest,notificationEvents,validateSettings} from '../core.js';
 import {words} from '../words.js';
 import {dictionaries} from '../i18n.js';
 const now=new Date(2026,10,16,9,0,0);
@@ -22,5 +22,17 @@ test('a reminder missed while the app was closed is caught up, newest of each ki
  for(const e of events)s.notified.push(e.key);
  assert.deepEqual(notificationEvents(s,day,+now+25*60000),[],'delivered reminders never come back');
  assert.equal(notificationEvents(s,day,+now+31*60000).length,1,'the next word still arrives on time');
+});
+test('the review queue starts at A1 whatever order the words were learned in',()=>{
+ const s=emptyState(),pick=level=>words.find(w=>w.level===level&&!s.learned[w.id]);
+ const hard=pick('C1'),easy=pick('A1'),middle=pick('B1');
+ // Learned hardest first, so insertion order is the opposite of the order review should ask in.
+ markLearned(s,hard.id,+now);markLearned(s,middle.id,+now+1000);markLearned(s,easy.id,+now+2000);
+ assert.deepEqual(reviewQueue(s,words,+now+3000),[easy.id,middle.id,hard.id]);
+ const second=words.find(w=>w.level==='A1'&&w.id!==easy.id);
+ markLearned(s,second.id,+now+3000);
+ s.learned[second.id].dueAt=+now;s.learned[easy.id].dueAt=+now+500;
+ assert.deepEqual(reviewQueue(s,words,+now+4000).slice(0,2),[second.id,easy.id],'within a level, the longest wait comes first');
+ assert.deepEqual(dueWords(s,+now+4000).sort(),reviewQueue(s,words,+now+4000).sort(),'the same words, only reordered');
 });
 test('all UI translation keys exist in both languages',()=>{assert.deepEqual(Object.keys(dictionaries.en).sort(),Object.keys(dictionaries.mn).sort());});

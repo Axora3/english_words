@@ -9,6 +9,14 @@ export const schedule=(day)=>day.ids.map((id,i)=>({id,at:day.start+i*day.interva
 export function nextWord(state,day,now=Date.now()){return schedule(day).find(x=>!state.learned[x.id]&&x.at<=now)||null;}
 export function markLearned(state,id,now=Date.now()){if(state.learned[id])return;state.learned[id]={learnedAt:now,dueAt:now,stage:0};}
 export function dueWords(state,now=Date.now()){return Object.keys(state.learned).filter(id=>state.learned[id].dueAt<=now);}
+export const levelOrder=['A1','A2','B1','B2','C1','C2'];
+/** The order the daily review asks its questions in: easiest level first, and within a level the
+ *  word that has been waiting longest. Review starts at A1 however the words were learned. */
+export function reviewQueue(state,words,now=Date.now()){
+ const level=new Map(words.map(w=>[w.id,levelOrder.indexOf(w.level)]));
+ const rank=id=>{const index=level.get(id);return index===undefined||index<0?levelOrder.length:index;};
+ return dueWords(state,now).sort((a,b)=>rank(a)-rank(b)||state.learned[a].dueAt-state.learned[b].dueAt||a.localeCompare(b));
+}
 export function reviewWord(state,id,correct,now=Date.now()){const item=state.learned[id];if(!item)return;item.stage=correct?Math.min(item.stage+1,6):0;item.dueAt=now+(correct?[0,1,3,7,14,30,60][item.stage]*86400000:600000);state.reviews.push({id,correct,at:now});}
 export function streak(state,now=new Date()){let n=0;const dates=new Set(Object.values(state.learned).map(v=>dayKey(new Date(v.learnedAt))));const d=new Date(now);if(!dates.has(dayKey(d)))d.setDate(d.getDate()-1);while(dates.has(dayKey(d))){n++;d.setDate(d.getDate()-1);}return n;}
 export function validateSettings(s){return ['mn','en'].includes(s.language)&&['light','dark'].includes(s.theme)&&Number.isInteger(s.dailyTarget)&&s.dailyTarget>=1&&s.dailyTarget<=20&&Number.isInteger(s.interval)&&s.interval>=1&&s.interval<=180&&['startTime','reviewTime','testTime'].every(k=>/^([01]\d|2[0-3]):[0-5]\d$/.test(s[k]))&&Number(s.startTime.slice(0,2))*60+Number(s.startTime.slice(3))+(s.dailyTarget-1)*s.interval<1440;}
