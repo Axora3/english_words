@@ -1,4 +1,5 @@
 import {u} from './labels.js';
+import {entryView,requiresEntry,isEntryAction,isEntryForm} from './auth-gate.js';
 import {polishUI,audioFeedback} from './ui-polish.js';
 import {recordGrammarMistakes} from './mistakes.js';
 import {advancedReminders} from './daily-challenge.js';
@@ -58,6 +59,13 @@ function render(){
  if(voicePractice.isListening()){voicePractice.stop(true);voiceResult={...voiceResult,status:'stopped'};}
  t=translator(state.settings.language);document.documentElement.lang=state.settings.language;document.documentElement.dataset.theme=state.settings.theme;document.body.classList.toggle('compact',state.settings.compact);
  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',state.settings.theme==='light'?'#FCF0DA':'#202734');
+ const locked=entryLocked();document.body.classList.toggle('auth-locked',locked);
+ if(locked){
+  closeNav();document.body.classList.remove('focus-mode');document.body.dataset.page='account';
+  if(authReady){route='account';if(location.hash!=='#account')history.replaceState(null,'',location.pathname+location.search+'#account');}
+  $('#app').innerHTML=entryView({state,account:accountUI,ready:authReady,error:authError,install:installSection()});
+  polishUI($('#app'),state,t);return;
+ }
  const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),leaderboard:()=>communityUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
  if(!views[route])route='dashboard';
  document.body.dataset.page=route;
@@ -115,6 +123,8 @@ async function pushNotification(title,options){try{const reg=swRegistration();if
 async function requestPermission(){if(!('Notification' in window)){toast(t('unsupported'),true);return;}try{await Notification.requestPermission();render();}catch{toast(t('permissionHelp'),true);}}
 function saveUI(patch){try{localStorage.setItem(UI_KEY,JSON.stringify({...JSON.parse(localStorage.getItem(UI_KEY)||'{}'),...patch}));}catch{}}
 document.addEventListener('click',async e=>{const el=e.target.closest('[data-action]');if(!el)return;const [action,value]=el.dataset.action.split(':');
+ if(entryLocked()&&!isEntryAction(action,value)){e.preventDefault();return;}
+ if(action==='auth-retry'){authError='';cloudStarted=false;authReady=false;render();await startCloud();return;}
  if(action==='recovery-export'){downloadFile(recoveryRaw,'english-words-recovery.txt','text/plain');return;}
  if(action==='collapse-sidebar'){const collapsed=document.body.classList.toggle('sidebar-collapsed');el.setAttribute('aria-expanded',String(!collapsed));saveUI({sidebarCollapsed:collapsed});return;}
  if(action==='theme-toggle'){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;state.settings.theme=state.settings.theme==='light'?'dark':'light';persist();render();$('[data-action="theme-toggle"]')?.focus();return;}
@@ -170,7 +180,7 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
  else if(action==='permission')await requestPermission();
  else if(action==='export'){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`lexi-backup-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast(t('downloaded'));}
 });
-document.addEventListener('submit',async e=>{e.preventDefault();if(await communityUI.submit(e.target))return;if(await accountUI.submit(e.target))return;if(await platform.submit(e.target))return;if(e.target.id==='grammar-form'){
+document.addEventListener('submit',async e=>{e.preventDefault();if(entryLocked()&&!isEntryForm(e.target.id))return;if(await communityUI.submit(e.target))return;if(await accountUI.submit(e.target))return;if(await platform.submit(e.target))return;if(e.target.id==='grammar-form'){
  const id=e.target.dataset.lesson,lesson=lessons.find(item=>item.id===id);if(!lesson)return;
  const data=new FormData(e.target),answers=lesson.questions.map((_,i)=>data.has('q'+i)?Number(data.get('q'+i)):-1);
  if(checkGrammar(state,id,answers)){recordGrammarMistakes(state,lessons.find(l=>l.id===id),state.grammar.attempts[id]);persist();render();document.querySelector('.lesson-exercises .feedback')?.scrollIntoView({block:'center'});}return;
@@ -194,7 +204,8 @@ const voicePractice=createSpeechPractice({scope:window,onChange(result){
 window.addEventListener('pagehide',()=>{voicePractice.stop(true);window.speechSynthesis?.cancel();});
 initPwa();onPwaChange(()=>{if(!settingsDirty)render();});
 // ---------- cloud account & sync (inactive unless the build has Supabase configuration) ----------
-let cloudEnabled=false,cloudStarted=false;
+let cloudEnabled=false,cloudStarted=false,authReady=false,authError='';
+function entryLocked(){return requiresEntry(authReady,syncEngine.snapshot().user,accountUI.recovery);}
 const communityUI=new CommunityUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},deviceId,sync:()=>syncEngine,dateLabel});
 const accountUI=new AccountUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},toast,persist,applyState,resetLocal,download:downloadFile,dateLabel,timeLabel,sync:()=>syncEngine});
 const syncEngine=createSyncEngine({api:{fetchState:()=>data.fetchState(),pushState:(s,b)=>data.pushState(s,b,deviceId()),createBackup:(s,r,l)=>data.createBackup(s,r,l)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
@@ -211,22 +222,36 @@ async function claimThisDevice(){
  try{await community.claimDevice(deviceId(),deviceLabel());await community.syncProfile();}
  catch(e){console.warn('Device claim unavailable:',e?.message||e);}
 }
-async function startCloud(){if(cloudStarted)return;cloudStarted=true;try{const session=await auth.session();syncEngine.setUser(session?.user||null);await auth.onChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}if(event==='SIGNED_OUT')syncEngine.setUser(null);else if(session?.user)syncEngine.setUser(session.user);if(event==='SIGNED_IN'){accountUI.backups=null;accountUI.message=null;communityUI.board=null;claimThisDevice();}if(!settingsDirty)render();});}catch(e){cloudStarted=false;console.warn('Cloud sync unavailable:',e?.message||e);}}
-cloudConfig().then(cfg=>{cloudEnabled=Boolean(cfg);if(!cfg)return;
- // Load the cloud client only for signed-in devices, auth redirects, or when the account page is opened.
- const hasSession=(()=>{try{return Boolean(localStorage.getItem('english-words-auth'));}catch{return false;}})();
- if(hasSession||/[?&](code|error_description)=/.test(location.search)||['account','leaderboard'].includes(route))startCloud().then(()=>{if(route==='leaderboard')communityUI.load();});
- if(!settingsDirty)render();});
+async function startCloud(){
+ if(cloudStarted)return;cloudStarted=true;
+ try{
+  const session=await auth.session();syncEngine.setUser(session?.user||null);
+  await auth.onChange((event,session)=>{
+   const wasSignedIn=Boolean(syncEngine.snapshot().user);
+   if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}
+   if(event==='SIGNED_OUT'){settingsDirty=false;accountUI.recovery=false;communityUI.stats=null;communityUI.board=null;syncEngine.setUser(null);}
+   else if(session?.user)syncEngine.setUser(session.user);
+   if(event==='SIGNED_IN'){
+    accountUI.backups=null;accountUI.message=null;communityUI.board=null;claimThisDevice();
+    if(!wasSignedIn&&!accountUI.recovery&&route==='account')go('dashboard');
+   }
+   if(!settingsDirty||!session?.user)render();
+  });
+  authError='';
+ }catch(e){cloudStarted=false;authError=u(state,'cloudUnreachable');console.warn('Cloud sync unavailable:',e?.message||e);}
+ finally{authReady=true;render();}
+}
+cloudConfig().then(async cfg=>{cloudEnabled=Boolean(cfg);if(cfg){await startCloud();if(route==='leaderboard')communityUI.load();}else{authReady=true;render();}});
 window.addEventListener('hashchange',()=>{if(cloudEnabled&&/^#(account|leaderboard)/.test(location.hash)){startCloud();communityUI.load();}});
 setInterval(()=>{if(!document.hidden&&syncEngine.snapshot().user&&syncEngine.snapshot().dirty)syncEngine.syncNow();},120000);
-async function notifyTick(){const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
+async function notifyTick(){if(entryLocked())return;const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
 setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){ensureDay(state,words);if(!settingsDirty)render();notifyTick();}});
 ensureDay(state,words);pruneNotified(state);persist();render();
 
 for(const type of ['dragstart','dragover','drop'])document.addEventListener(type,event=>platform.practice.drag(event));
 
-let lastActive=Date.now(),lastSample=Date.now();for(const name of ['pointerdown','keydown','scroll'])document.addEventListener(name,()=>lastActive=Date.now(),{passive:true});setInterval(()=>{const now=Date.now(),seconds=Math.min(15,(now-lastSample)/1000);lastSample=now;if(!document.hidden&&document.hasFocus()&&now-lastActive<60000){recordStudyTime(state,route,seconds,now);persist({quiet:true});}},15000);
+let lastActive=Date.now(),lastSample=Date.now();for(const name of ['pointerdown','keydown','scroll'])document.addEventListener(name,()=>lastActive=Date.now(),{passive:true});setInterval(()=>{const now=Date.now(),seconds=Math.min(15,(now-lastSample)/1000);lastSample=now;if(!entryLocked()&&!document.hidden&&document.hasFocus()&&now-lastActive<60000){recordStudyTime(state,route,seconds,now);persist({quiet:true});}},15000);
 
 document.addEventListener('change',e=>{if(e.target.id==='vocab-file')platform.importer.file(e.target.files[0]);});document.addEventListener('dragover',e=>{if(e.target.closest('#vocab-drop')){e.preventDefault();e.target.closest('#vocab-drop').classList.add('is-over');}});document.addEventListener('dragleave',e=>{if(e.target.closest('#vocab-drop'))e.target.closest('#vocab-drop').classList.remove('is-over');});document.addEventListener('drop',e=>{if(e.target.closest('#vocab-drop')){e.preventDefault();platform.importer.file(e.dataTransfer.files[0]);}});
 
@@ -234,6 +259,7 @@ document.addEventListener('click',event=>{if(event.target.closest('[data-skip-ma
 document.addEventListener('keydown',event=>{if(event.key==='Tab'&&document.body.classList.contains('nav-open')){const links=[...document.querySelectorAll('.sidebar a,.sidebar button')].filter(el=>el.getClientRects().length),first=links[0],last=links.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}});
 // Keyboard shortcuts: "/" search, Space reveal, 1/2 answer during review.
 document.addEventListener('keydown',event=>{
+ if(entryLocked())return;
  const target=event.target,typing=target.closest?.('input,textarea,select,[contenteditable="true"]');if(typing||event.metaKey||event.ctrlKey||event.altKey||document.querySelector('dialog[open]'))return;
  if(event.key==='/'){event.preventDefault();if(route==='dictionary'||route==='library')$('#p-query')?.focus();else{focusSearchNext=true;go('library');}return;}
  const onControl=target.closest?.('button,a,summary,label');

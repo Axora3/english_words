@@ -30,12 +30,14 @@ export class AccountUI{
   return head+msg+this.status(sync)+(sync.plan?this.firstSync(sync):'')+(sync.presync?this.presync(sync):'')+this.backupsView()+this.profileView()+this.passwordForm(false)+this.signOutView(sync)+this.deleteView();
  }
  compare(){const L=k=>this.L(k);return `<section class="compare-grid"><div class="panel">${iconTile('device-mobile','listening')}<h2>${L('deviceData')}</h2><p class="muted-copy">${L('cloudOffHelp')}</p></div><div class="panel">${iconTile('cloud','quiz')}<h2>${L('cloudData')}</h2><p class="muted-copy">${L('cloudBenefits')}</p></div></section>`;}
- authForm(){const L=k=>this.L(k),m=this.mode,pw=m==='signIn'||m==='signUp';
-  const tabs=segmented([['signIn','login'],['signUp','user-circle'],['magicLink','mail'],['forgot','key']].map(([k,ic])=>({label:L(k),ic,action:'a-mode:'+k,active:m===k})),{label:L('account')});
+ authForm({entry=false}={}){const L=k=>this.L(k),m=this.mode,pw=m==='signIn'||m==='signUp';
+  const modes=entry?[['signIn','login'],['signUp','user-circle']]:[['signIn','login'],['signUp','user-circle'],['magicLink','mail'],['forgot','key']];
+  const tabs=segmented(modes.map(([k,ic])=>({label:L(k),ic,action:'a-mode:'+k,active:m===k})),{label:L('account')});
   return `<section class="panel auth-panel">${tabs}<form id="a-auth-form" class="auth-form" novalidate>
    <label class="field"><span class="field-label">${L('email')}</span><input class="input" type="email" name="email" autocomplete="email" inputmode="email" required maxlength="254" value="${esc(this.draftEmail||'')}"></label>
    ${pw?`<label class="field"><span class="field-label">${L('password')}</span><input class="input" type="password" name="password" autocomplete="${m==='signUp'?'new-password':'current-password'}" required minlength="8" maxlength="72">${m==='signUp'?`<small class="key-hint">${L('passwordHint')}</small>`:''}</label>`:''}
    ${button(L(m==='forgot'?'sendReset':m==='magicLink'?'sendLink':m),{full:true,size:'lg',ic:m==='signUp'?'user-circle':m==='signIn'?'login':'mail',attrs:this.btnBusy('auth')})}
+   ${entry?button(L('forgot'),{action:'a-mode:forgot',kind:'ghost',size:'sm',type:'button'}):''}
    ${!navigator.onLine?`<p class="key-hint">${icon('wifi-off')}${L('needsInternet')}</p>`:''}</form></section>`;}
  status(sync){const L=k=>this.L(k),s=sync.status;
   return `<section class="panel sync-panel"><div class="sync-head">${iconTile(syncIcon[s]||'cloud',s==='error'?'speaking':s==='offline'?'writing':'spelling')}<div><p class="eyebrow">${L('signedInAs')}</p><h2>${esc(sync.user.email)}</h2></div>${badge(L(syncLabel[s]||'synced'),tone[s])}</div>

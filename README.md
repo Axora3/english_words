@@ -1,15 +1,15 @@
 # English Words
 
-A bilingual (Mongolian/English) English-vocabulary and grammar learning app. It is an installable PWA that works offline. It is **local-first**: everything works as a guest with data in the browser. An optional Supabase account adds private cloud sync across devices and cloud backups. Mongolian is the default interface language; switch to English in Settings.
+A bilingual (Mongolian/English) English-vocabulary and grammar learning app. Sign-in is required: signed-out visitors see only sign-in, registration, password recovery and app installation instructions. The learning menus and routes open after the session is restored. Progress is saved locally first and synced privately through Supabase. An existing signed-in session supports offline learning. Mongolian is the default interface language; switch to English in Settings.
 
 ```sh
 npm ci          # @supabase/supabase-js (runtime, vendored into dist/) + PGlite (tests only)
 npm run dev     # http://localhost:5173 (127.0.0.1 only); serves config.js, sw.js and the client
-npm test        # 92 tests: learning logic, merge/sync, PWA, and migrations + RLS on real PostgreSQL
+npm test        # 104 tests: entry access, learning logic, merge/sync, PWA and database RLS
 npm run build   # clean static build in dist/ (deployed by Vercel), plus the Scriptable widget
 ```
 
-Cloud sync is enabled by two **public** environment variables, `SUPABASE_URL` and `SUPABASE_ANON_KEY`, set in `.env.local` or in the Vercel settings (see `.env.example`). Without them the app runs in local-only mode. Setup, deployment and the production checklist are in [DEPLOYMENT.md](DEPLOYMENT.md).
+Cloud access uses **public** settings in `cloud-config.json`, or `SUPABASE_URL` and `SUPABASE_ANON_KEY` / `SUPABASE_PUBLISHABLE_KEY` in the environment. Without configuration, the entry screen stays closed and shows a configuration error. Setup and deployment are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Features
 
@@ -69,8 +69,8 @@ Sign in and the app publishes a small public profile: a name you choose, your le
 
 ## Guest mode, cloud account and sync
 
-- **Guest (default):** progress lives only in this browser on this device. Nothing is sent anywhere. Move it with a JSON backup.
-- **Account (optional):** Settings → **Account & sync**. Supports email + password sign-up with email confirmation, sign-in, email sign-in links, password reset, password change, sign-out and account deletion. Sessions persist and refresh automatically.
+- **Signed out:** only authentication and installation instructions are available. Existing local progress is preserved. Direct learning URLs return to the entry screen, and learning shortcuts/actions are disabled.
+- **Account (required):** email + password sign-up with email confirmation, sign-in and password recovery on entry. After sign-in, Settings → **Account & sync** also supports email links, password change, sign-out and account deletion. Sessions persist and refresh automatically.
 - **What syncs:** the same document as the JSON backup (all progress, settings, collections, custom words). It is stored in `ew_learning_states`, one row per user, readable only by that user (Row Level Security on `auth.uid()`). The vocabulary and the 100 grammar lessons are app content and stay in the bundle.
 - **First sign-in on a device:** nothing is uploaded or replaced automatically when both the device and the account hold progress. You see both side by side and choose **Merge both**, **Use cloud progress** or **Use this device's progress**. Merge is recommended. Before anything changes, a copy of the device's progress is kept (downloadable until you discard it). Replacing the cloud copy saves it as a cloud backup first. The result is verified by reading it back.
 - **Ongoing sync:**
