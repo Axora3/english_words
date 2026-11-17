@@ -49,3 +49,16 @@ export const data={
  async profile(){return check(await (await need()).from('ew_profiles').select('display_name,preferred_language,timezone').maybeSingle());},
  async saveProfile(fields){const c=await need(),{data:{user}}=await c.auth.getUser();check(await c.from('ew_profiles').upsert({id:user.id,...fields},{onConflict:'id'}));},
 };
+
+/** Community layer: the public profile, the leaderboard and the one-active-device rule.
+ *  Levels, XP and coins come back from the database, which derives them from the synced learning
+ *  document — this file never sends a number that a player could have edited. */
+export const community={
+ /** Publishes this account's progress and returns {handle,level,xp,coins,rank,players,...}. */
+ async syncProfile(handle=null){return check(await (await need()).rpc('ew_sync_profile',{p_handle:handle}));},
+ async leaderboard(limit=50){return check(await (await need()).from('ew_public_stats')
+  .select('user_id,handle,level,xp,words_learned,reviews,lessons,coins,updated_at')
+  .order('xp',{ascending:false}).order('updated_at',{ascending:true}).limit(limit));},
+ async claimDevice(deviceId,label=null){return check(await (await need()).rpc('ew_claim_device',{p_device_id:deviceId,p_label:label}));},
+ async deviceStatus(deviceId){return check(await (await need()).rpc('ew_device_status',{p_device_id:deviceId}));},
+};

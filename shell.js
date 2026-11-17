@@ -14,7 +14,7 @@ export function activeGroup(route){for(const [name,list] of Object.entries(group
 
 /** Human title for a route, used by the top bar. */
 export function routeTitle(route,state,t){
- const own={dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review'),account:u(state,'account')};
+ const own={dashboard:u(state,'home'),library:u(state,'vocabulary'),statistics:u(state,'progress'),tools:u(state,'more'),practice:u(state,'practice'),review:u(state,'review'),account:u(state,'account'),leaderboard:u(state,'leaderboard')};
  if(own[route])return own[route];
  const core={learn:'learn',test:'test',results:'test',favorites:'favorites',history:'history',settings:'settings',notifications:'notifications',grammar:'grammar',widget:'widget',details:'details'};
  return core[route]?t(core[route]):t('p.'+route);
@@ -29,7 +29,7 @@ export function sidebar(state,route,{t,day}){
    <button class="icon-btn sidebar-collapse" type="button" data-action="collapse-sidebar" aria-expanded="${!document.body.classList.contains('sidebar-collapsed')}" aria-label="${esc(t('p.collapse'))}" data-tooltip="${esc(t('p.collapse'))}">${icon('layout-sidebar-left-collapse',{className:'when-open'})}${icon('layout-sidebar-left-expand',{className:'when-collapsed'})}</button></div>
   <div class="sidebar-scroll">
    <nav class="nav-group" aria-label="${esc(u(state,'workspace'))}"><p class="nav-caption">${u(state,'workspace')}</p>${primary.map(([name,ic,label])=>link(name,ic,u(state,label),{current:active===name,count:name==='review'?due:0})).join('')}</nav>
-   <nav class="nav-group" aria-label="${esc(u(state,'library'))}"><p class="nav-caption">${u(state,'library')}</p>${[['grammar','school',t('grammar')],['collections','folders',t('p.collections')],['favorites','heart',t('favorites')],['history','clock',t('history')]].map(([name,ic,label])=>link(name,ic,label,{current:route===name})).join('')}</nav>
+   <nav class="nav-group" aria-label="${esc(u(state,'library'))}"><p class="nav-caption">${u(state,'library')}</p>${[['grammar','school',t('grammar')],['leaderboard','trophy',u(state,'leaderboard')],['collections','folders',t('p.collections')],['favorites','heart',t('favorites')],['history','clock',t('history')]].map(([name,ic,label])=>link(name,ic,label,{current:route===name})).join('')}</nav>
   </div>
   <div class="sidebar-foot">
    <a class="sidebar-today" href="#learn" data-tooltip="${esc(u(state,'dayTrack'))}"><span class="mini-ring" style="--p:${total?done/total*100:0}%"><span class="num">${done}</span></span><span class="nav-label"><strong>${u(state,'dayTrack')}</strong><small class="num">${done} / ${total}</small></span></a>

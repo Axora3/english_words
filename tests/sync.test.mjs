@@ -71,3 +71,23 @@ test('forgetting the account link clears sync metadata but keeps learning data',
  const server=fakeServer(),local=fresh();markLearned(local,'1',at);const d=device(server,local);d.engine.setUser(user);await d.engine.syncNow();await d.engine.choose('use-device');
  d.engine.forget();assert.equal(d.status(),'signed-out');assert.equal(d.storage.getItem(SYNC_KEYS.META),null);assert.ok(d.state.learned['1']);
 });
+
+test('an account taken over by another device stops syncing and says why',async()=>{
+ const server=fakeServer(),d=device(server);
+ d.engine.setUser(user);await settle();await d.engine.syncNow();await settle();
+ assert.equal(d.status(),'synced');
+ // The same account signs in somewhere else; the database refuses this device's next push.
+ server.api.pushState=async()=>{throw Error('device not active');};
+ markLearned(d.state,'1',at);d.engine.markDirty();
+ const before=d.timers.length;
+ await d.engine.syncNow();await settle();
+ assert.equal(d.status(),'device','the person has to choose, so the status says so');
+ assert.equal(d.timers.length,before,'no retry is scheduled: retrying cannot win the account back');
+ assert.equal(d.engine.snapshot().dirty,true,'the unsent change is still waiting on this device');
+ // Taking the account back here makes the next sync go through, with nothing lost.
+ server.api.pushState=fakeServer().api.pushState.bind(null);
+ server.api.pushState=async(state,base)=>{server.row={state:copy(state),revision:(server.row?.revision??0)+1};return {status:'ok',revision:server.row.revision};};
+ await d.engine.syncNow();await settle();
+ assert.equal(d.status(),'synced');
+ assert.ok(server.row.state.learned['1'],'the change made while locked out is uploaded');
+});

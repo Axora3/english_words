@@ -6,9 +6,9 @@ import {auth,data,cloudConfig} from './cloud.js';
 import {validBackup} from './backup.js';
 import {button,pageHeader,sectionHeader,notice,badge,iconTile,segmented,esc} from './ui.js';
 
-export const syncIcon={'signed-out':'cloud','idle':'cloud','synced':'cloud-check','syncing':'cloud-upload','pending':'cloud-upload','offline':'cloud-off','error':'cloud-off','needs-choice':'cloud'};
-export const syncLabel={'signed-out':'localOnlyState','idle':'synced','synced':'synced','syncing':'syncing','pending':'pending','offline':'offlineSync','error':'syncError','needs-choice':'needsChoice'};
-const tone={synced:'tone-mint',idle:'tone-mint',syncing:'tone-accent',pending:'tone-accent',offline:'tone-warning',error:'tone-danger','needs-choice':'tone-warning','signed-out':''};
+export const syncIcon={'signed-out':'cloud','device':'device-mobile','idle':'cloud','synced':'cloud-check','syncing':'cloud-upload','pending':'cloud-upload','offline':'cloud-off','error':'cloud-off','needs-choice':'cloud'};
+export const syncLabel={'signed-out':'localOnlyState','device':'deviceElsewhere','idle':'synced','synced':'synced','syncing':'syncing','pending':'pending','offline':'offlineSync','error':'syncError','needs-choice':'needsChoice'};
+const tone={synced:'tone-mint',idle:'tone-mint',device:'tone-warning',syncing:'tone-accent',pending:'tone-accent',offline:'tone-warning',error:'tone-danger','needs-choice':'tone-warning','signed-out':''};
 
 export class AccountUI{
  constructor(ctx){this.ctx=ctx;this.configured=null;this.mode='signIn';this.busy='';this.message=null;this.backups=null;this.profile=null;this.recovery=false;this.draftEmail='';cloudConfig().then(c=>{this.configured=Boolean(c);ctx.render();});}

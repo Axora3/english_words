@@ -17,7 +17,7 @@ This is the exact path from this repository to a production URL. The steps marke
 ## 1. Create the Supabase project **(you)**
 
 1. At https://supabase.com/dashboard, click **New project**. Name it `english-words`, choose a region close to your users, and set a strong database password. Store that password in your password manager; the app never needs it.
-2. Open **SQL Editor → New query**. Paste the whole of `supabase/migrations/20261117000100_english_words_schema.sql` and click **Run**. The migration only creates objects; it never drops or alters existing data. It creates:
+2. Open **SQL Editor → New query**. Paste the whole of `supabase/migrations/20261117000100_english_words_schema.sql` and click **Run**, then do the same with `supabase/migrations/20261118000100_english_words_community.sql` (the community layer: public stats, levels, coins and the one-device rule — it also replaces two functions from the first file, so run it second). The migration only creates objects; it never drops or alters existing data. It creates:
    - the tables `ew_profiles`, `ew_learning_states` and `ew_cloud_backups`, with Row Level Security enabled on all three;
    - the functions `ew_push_learning_state` and `ew_delete_my_account`;
    - a trigger that keeps at most 30 backups per user. All names start with `ew_` and nothing is attached to `auth.users`, so the file is safe in a project shared with another app (it is installed in the shared "Axora3's Project", ref `wxirsnuyofgkrhjynasl`). Account deletion keeps a login that the other app still uses (`admin_users`).
@@ -80,7 +80,9 @@ Then open a pull request into `main` on GitHub. `main` currently only has the pr
 | Production build passes | `npm run build` (CI on Vercel) | ✅ locally |
 | Unit / integration tests | `npm test`: 92 tests, including migrations and RLS on real PostgreSQL (PGlite) | ✅ locally |
 | Env vars configured | Vercel → Settings → Environment Variables | ⏳ you |
-| Migration applied | Supabase → Table Editor shows 3 tables, all marked "RLS enabled" | ⏳ you |
+| Migrations applied | Supabase → Table Editor shows 5 `ew_` tables, all marked "RLS enabled" | ⏳ you |
+| Leaderboard | Two accounts: each sees both public rows, neither can read the other's learning state | ⏳ after setup |
+| One active device | Sign in on a second device: the first stops syncing and offers "Use this device" | ⏳ after setup |
 | RLS verified on the real project | Sign in as two different test users; each sees only their own row | ⏳ after setup |
 | Auth flows | Sign up + confirm, sign in, magic link, reset password, sign out | ⏳ after setup |
 | Sync | Two browsers on one account: edit offline in both, reconnect, both changes present | ⏳ after setup |

@@ -9,11 +9,12 @@ import {setCustomWords} from './words.js';
 import { widgetPage, detectPlatform } from './widget-ui.js';
 import { buildWidgetScript } from './widget-export.js';
 import { publishWidget } from './widget-live.js';
+import { CommunityUI, deviceLabel } from './community-ui.js';
 import {icon} from './icons.js';
 import {sidebar,topbar,bottomNav,routeTitle,brandMark} from './shell.js';
 import {homeView} from './home.js';
 import {initPwa,onPwaChange,pwaState,promptInstall,applyUpdate,swRegistration} from './pwa.js';
-import {auth,data,cloudConfig} from './cloud.js';
+import {auth,data,community,cloudConfig} from './cloud.js';
 import {createSyncEngine} from './sync.js';
 import {AccountUI,syncIcon,syncLabel} from './account-ui.js';
 import {learnView,detailView,reviewView,testView,resultsView,wordListView} from './word-ui.js';
@@ -57,7 +58,7 @@ function render(){
  if(voicePractice.isListening()){voicePractice.stop(true);voiceResult={...voiceResult,status:'stopped'};}
  t=translator(state.settings.language);document.documentElement.lang=state.settings.language;document.documentElement.dataset.theme=state.settings.theme;document.body.classList.toggle('compact',state.settings.compact);
  document.querySelector('meta[name="theme-color"]')?.setAttribute('content',state.settings.theme==='light'?'#FCF0DA':'#202734');
- const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
+ const views={...Object.fromEntries(platformRoutes.map(name=>[name,()=>platform.view(name)])),widget:()=>widgetPage(state,{t,esc,timeLabel},widgetSize,widgetPlatform),library:()=>platform.dictionary(),grammar:()=>grammarPage(state,{t,esc,dateLabel,level:grammarLevel}),dashboard:()=>homeView(state,today(),{t,timeLabel,dateLabel,countdown,persist,byId,locale:locale()}),learn:()=>learnView(ctx()),review:()=>reviewView(ctx()),test:()=>testView(ctx()),favorites:()=>wordListView(ctx(),true),history:()=>wordListView(ctx(),false),statistics:()=>platform.progress.overview(),settings:settingsPage,account:()=>accountUI.view(),leaderboard:()=>communityUI.view(),notifications:notificationsPage,results:()=>resultsView(ctx()),details:()=>detailView(ctx())};
  if(!views[route])route='dashboard';
  document.body.dataset.page=route;
  const focusMode=(route==='review'&&reviewSession)||(route==='test'&&state.activeTest)||(route==='practice'&&platform.practice.question);
@@ -125,6 +126,7 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
   toast(ok?u(state,'testSent'):t('permissionHelp'),!ok);return;}
  if(action==='pwa-install'){const outcome=await promptInstall();if(outcome==='accepted')toast(u(state,'installed'));render();return;}
  if(action==='pwa-update'){if(settingsDirty&&!confirm(t('unsaved')))return;settingsDirty=false;persist({quiet:true});applyUpdate();return;}
+ if(await communityUI.click(action,value))return;
  if(await accountUI.click(action,value))return;
  if(await platform.click(action,value))return;
  if(action==='go'){if(value!=='review'){reviewResult=null;}go(value);}
@@ -168,14 +170,14 @@ document.addEventListener('click',async e=>{const el=e.target.closest('[data-act
  else if(action==='permission')await requestPermission();
  else if(action==='export'){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=`lexi-backup-${dayKey()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);toast(t('downloaded'));}
 });
-document.addEventListener('submit',async e=>{e.preventDefault();if(await accountUI.submit(e.target))return;if(await platform.submit(e.target))return;if(e.target.id==='grammar-form'){
+document.addEventListener('submit',async e=>{e.preventDefault();if(await communityUI.submit(e.target))return;if(await accountUI.submit(e.target))return;if(await platform.submit(e.target))return;if(e.target.id==='grammar-form'){
  const id=e.target.dataset.lesson,lesson=lessons.find(item=>item.id===id);if(!lesson)return;
  const data=new FormData(e.target),answers=lesson.questions.map((_,i)=>data.has('q'+i)?Number(data.get('q'+i)):-1);
  if(checkGrammar(state,id,answers)){recordGrammarMistakes(state,lessons.find(l=>l.id===id),state.grammar.attempts[id]);persist();render();document.querySelector('.lesson-exercises .feedback')?.scrollIntoView({block:'center'});}return;
  }if(e.target.id==='test-form'){const a=state.activeTest,q=a.questions[a.index];if(a.answers[a.index])return;const value=new FormData(e.target).get('answer')?.trim();if(!value)return;const correct=['fill','audio'].includes(q.type)?value.toLowerCase()===byId(q.id).word.toLowerCase():value===q.id;a.answers.push({value,correct});persist();render();$('[data-action="next-question"]')?.focus();return;}
  if(['settings-form','notification-form'].includes(e.target.id)){const form=e.target,fd=new FormData(form),old=state.settings,s={...old};for(const [key,val]of fd)s[key]=['dailyTarget','interval'].includes(key)?Number(val):val;for(const input of form.querySelectorAll('input[type="checkbox"]'))s[input.name]=input.checked;if(!validateSettings(s)){$('#settings-error').innerHTML=notice(t('invalidSettings'),{tone:'tone-danger',ic:'alert-triangle'});return;}state.settings=s;if(s.startTime!==old.startTime||s.interval!==old.interval||s.dailyTarget!==old.dailyTarget)rescheduleDay(state,words);settingsDirty=false;persist();if(s.notifications&&!old.notifications&&permission()==='default')await requestPermission();render();toast(t('saved'));}
 });
-document.addEventListener('input',e=>{if(e.target.name==='email'&&e.target.closest('#a-auth-form')){accountUI.draftEmail=e.target.value;return;}if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
+document.addEventListener('input',e=>{if(communityUI.input(e.target))return;if(e.target.name==='email'&&e.target.closest('#a-auth-form')){accountUI.draftEmail=e.target.value;return;}if(platform.input(e.target))return;if(e.target.id==='search'){search=e.target.value;const start=e.target.selectionStart;render();const input=$('#search');input.focus();input.setSelectionRange(start,start);}else if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;});
 document.addEventListener('change',async e=>{if(e.target.name==='theme'&&e.target.closest('#settings-form')){e.target.closest('.segmented').querySelectorAll('label').forEach(l=>l.classList.toggle('active',l.contains(e.target)));}if(platform.input(e.target))return;if(e.target.closest('#settings-form,#notification-form'))settingsDirty=true;if(e.target.id==='import'){try{const file=e.target.files[0];if(!file)return;if(file.size>5000000)throw Error();const data=JSON.parse(await file.text());if(!validBackup(data))throw Error();if(!confirm(t('importConfirm')))return;state={...emptyState(),...data,designVersion:2};migrateAdvanced(state);setCustomWords(state.advanced.customWords);recoveryRaw=null;reviewSession=null;reviewResult=null;result=null;settingsDirty=false;persist();render();toast(t('imported'));}catch{toast(t('importError'),true);}}});
 window.addEventListener('hashchange',()=>{const target=location.hash.slice(1);if(settingsDirty&&!confirm(t('unsaved'))){history.replaceState(null,'','#'+route);return;}settingsDirty=false;route=target.split('/')[0];if(route==='details')detailId=target.split('/')[1]||detailId;revealed=route==='details';search='';filter='all';reviewResult=null;closeNav();render();window.scrollTo(0,0);});
 window.addEventListener('beforeunload',e=>{if(settingsDirty){e.preventDefault();e.returnValue='';}});
@@ -193,6 +195,7 @@ window.addEventListener('pagehide',()=>{voicePractice.stop(true);window.speechSy
 initPwa();onPwaChange(()=>{if(!settingsDirty)render();});
 // ---------- cloud account & sync (inactive unless the build has Supabase configuration) ----------
 let cloudEnabled=false,cloudStarted=false;
+const communityUI=new CommunityUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},deviceId,sync:()=>syncEngine,dateLabel});
 const accountUI=new AccountUI({state:()=>state,t:()=>t,render:()=>{if(!settingsDirty)render();},toast,persist,applyState,resetLocal,download:downloadFile,dateLabel,timeLabel,sync:()=>syncEngine});
 const syncEngine=createSyncEngine({api:{fetchState:()=>data.fetchState(),pushState:(s,b)=>data.pushState(s,b,deviceId()),createBackup:(s,r,l)=>data.createBackup(s,r,l)},getState:()=>state,applyState:s=>applyState(s),validate:validBackup,onChange:snap=>{const el=document.querySelector('.sync-indicator');if(el){el.outerHTML=syncButton(snap);}if(route==='account'&&!document.activeElement?.matches?.('input,textarea')&&!settingsDirty)render();}});
 function syncButton(snap=syncEngine.snapshot()){const s=snap.status,label=u(state,syncLabel[s]||'localOnlyState');return `<a class="icon-btn sync-indicator is-${s}" href="#account" aria-label="${esc(label)}" data-tooltip="${esc(label)}">${icon(syncIcon[s]||'cloud')}</a>`;}
@@ -201,13 +204,20 @@ function accountSummary(){if(!cloudEnabled)return `<section class="settings-grou
 function installSection(){const p=pwaState(),L=k=>u(state,k),steps=(title,items,ic)=>`<div class="install-steps"><h3>${icon(ic)}${title}</h3><ol>${items.map(k=>`<li>${L(k)}</li>`).join('')}</ol></div>`;
  return `<section class="settings-group" id="set-install"><h2 class="group-title">${L('installApp')}</h2><div class="group-body"><div class="setting-row"><span class="setting-icon">${icon(p.installed?'circle-check':'apps')}</span><span class="setting-copy"><strong>${L(p.installed?'installed':'installApp')}</strong><small>${L(p.installed?'installedHelp':'installHelp')}</small></span><span class="setting-control">${p.installed?badge(L('installed'),'tone-mint'):p.canPrompt?button(L('installNow'),{action:'pwa-install',size:'sm',ic:'download'}):''}</span></div>
   ${p.installed?'':`<div class="install-guide">${steps(L('iosTitle'),['ios1','ios2','ios3','ios4'],'device-mobile')}${steps(L('androidTitle'),['android1','android2'],'device-mobile')}${steps(L('desktopTitle'),['desktop1'],'device-desktop')}</div><p class="group-note">${icon('info-circle')}${L('iosNote')}</p>`}</div></section>`;}
-async function startCloud(){if(cloudStarted)return;cloudStarted=true;try{const session=await auth.session();syncEngine.setUser(session?.user||null);await auth.onChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}if(event==='SIGNED_OUT')syncEngine.setUser(null);else if(session?.user)syncEngine.setUser(session.user);if(event==='SIGNED_IN'){accountUI.backups=null;accountUI.message=null;}if(!settingsDirty)render();});}catch(e){cloudStarted=false;console.warn('Cloud sync unavailable:',e?.message||e);}}
+/** One account, one active device: signing in here takes the account over, and the device that had
+ *  it finds out on its next push (the database refuses it) and can take it back from the Players
+ *  screen. Failures are not fatal — learning keeps working without the community features. */
+async function claimThisDevice(){
+ try{await community.claimDevice(deviceId(),deviceLabel());await community.syncProfile();}
+ catch(e){console.warn('Device claim unavailable:',e?.message||e);}
+}
+async function startCloud(){if(cloudStarted)return;cloudStarted=true;try{const session=await auth.session();syncEngine.setUser(session?.user||null);await auth.onChange((event,session)=>{if(event==='PASSWORD_RECOVERY'){accountUI.recovery=true;if(route!=='account')go('account');}if(event==='SIGNED_OUT')syncEngine.setUser(null);else if(session?.user)syncEngine.setUser(session.user);if(event==='SIGNED_IN'){accountUI.backups=null;accountUI.message=null;communityUI.board=null;claimThisDevice();}if(!settingsDirty)render();});}catch(e){cloudStarted=false;console.warn('Cloud sync unavailable:',e?.message||e);}}
 cloudConfig().then(cfg=>{cloudEnabled=Boolean(cfg);if(!cfg)return;
  // Load the cloud client only for signed-in devices, auth redirects, or when the account page is opened.
  const hasSession=(()=>{try{return Boolean(localStorage.getItem('english-words-auth'));}catch{return false;}})();
- if(hasSession||/[?&](code|error_description)=/.test(location.search)||route==='account')startCloud();
+ if(hasSession||/[?&](code|error_description)=/.test(location.search)||['account','leaderboard'].includes(route))startCloud().then(()=>{if(route==='leaderboard')communityUI.load();});
  if(!settingsDirty)render();});
-window.addEventListener('hashchange',()=>{if(cloudEnabled&&location.hash.startsWith('#account'))startCloud();});
+window.addEventListener('hashchange',()=>{if(cloudEnabled&&/^#(account|leaderboard)/.test(location.hash)){startCloud();communityUI.load();}});
 setInterval(()=>{if(!document.hidden&&syncEngine.snapshot().user&&syncEngine.snapshot().dirty)syncEngine.syncNow();},120000);
 async function notifyTick(){const events=[...notificationEvents(state,today()),...advancedReminders(state)];if(!events.length||permission()!=='granted')return;for(const event of events){const deliver=async()=>{if(state.notified.includes(event.key))return;state.notified.push(event.key);persist();if(event.stale)return;const title=`English Words · ${t(event.type==='learn'?'newWords':['goals','challenges'].includes(event.type)?'p.'+event.type:event.type)}`,options={body:t('notificationBody'),icon:'./icon.svg',tag:event.key,silent:!state.settings.sound,data:{url:`./#${event.type}`}};if(!await pushNotification(title,options))toast(t('permissionHelp'),true);};if(navigator.locks)await navigator.locks.request('lexi-notifications',async()=>{try{const fresh=JSON.parse(localStorage.getItem(KEY));if(fresh?.notified)state.notified=[...new Set([...state.notified,...fresh.notified])];}catch{}await deliver();});else await deliver();}}
 setInterval(()=>{if(dayKey()!==todayKey){todayKey=dayKey();ensureDay(state,words);pruneNotified(state);persist();render();}document.querySelectorAll('[data-until]').forEach(el=>{el.textContent=countdown(Number(el.dataset.until));if(Number(el.dataset.until)<=Date.now())render();});notifyTick();},1000);

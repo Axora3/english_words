@@ -83,7 +83,12 @@ export function createSyncEngine({api,getState,applyState,validate,storage=globa
   markDirty(quiet=false){counter++;if(!meta.dirty)saveMeta({dirty:true});if(!user||meta.userId!==user.id)return;if(status==='synced'||status==='idle')set('pending');if(!quiet)later(3000);},
   async syncNow(){
    if(running){again=true;return running;}
-   running=(async()=>{try{await cycle();}catch(e){const offline=!isOnline()||e?.name==='TypeError'||/fetch|network/i.test(e?.message||'');set(offline?'offline':'error',offline?'':e?.message||String(e));retries++;later(Math.min(600000,15000*2**Math.min(retries,5)));}finally{running=null;if(again){again=false;later(500);}}})();
+   running=(async()=>{try{await cycle();}catch(e){const message=e?.message||String(e);
+    // The account is signed in on another device. Retrying cannot fix that — the person has to
+    // take the account back (Players screen) or sign in again, so stop and say so.
+    if(/device not active/i.test(message)){set('device');}
+    else{const offline=!isOnline()||e?.name==='TypeError'||/fetch|network/i.test(message);set(offline?'offline':'error',offline?'':message);retries++;later(Math.min(600000,15000*2**Math.min(retries,5)));}
+   }finally{running=null;if(again){again=false;later(500);}}})();
    return running;
   },
   choose:c=>choose(c).catch(e=>{set('error',e?.message||String(e));}),
