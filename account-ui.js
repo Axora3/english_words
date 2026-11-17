@@ -33,16 +33,20 @@ export class AccountUI{
   return head+msg+this.status(sync)+(sync.plan?this.firstSync(sync):'')+(sync.presync?this.presync(sync):'')+this.backupsView()+this.profileView()+this.passwordForm(false)+this.signOutView(sync)+this.deleteView();
  }
  compare(){const L=k=>this.L(k);return `<section class="compare-grid"><div class="panel">${iconTile('device-mobile','listening')}<h2>${L('deviceData')}</h2><p class="muted-copy">${L('cloudOffHelp')}</p></div><div class="panel">${iconTile('cloud','quiz')}<h2>${L('cloudData')}</h2><p class="muted-copy">${L('cloudBenefits')}</p></div></section>`;}
+ authPassword(name,label,autocomplete,hint=''){
+  const show=this.state.settings.language==='mn'?'Нууц үг харах':'Show password';
+  return `<label class="field"><span class="field-label">${label}</span><span class="input-shell"><input class="input" id="auth-field-${name}" type="password" name="${name}" aria-label="${esc(label)}" autocomplete="${autocomplete}" required minlength="8" maxlength="72"><button class="password-visibility" type="button" data-action="a-password-toggle:${name}" aria-controls="auth-field-${name}" aria-label="${show}" aria-pressed="false">${icon('eye')}</button></span>${hint?`<small class="key-hint">${hint}</small>`:''}</label>`;
+ }
  authForm({entry=false}={}){const L=k=>this.L(k),m=this.mode,pw=m==='signIn'||m==='signUp';
   const modes=entry?[['signIn','login'],['signUp','user-circle']]:[['signIn','login'],['signUp','user-circle'],['magicLink','mail'],['forgot','key']];
   const tabs=segmented(modes.map(([k,ic])=>({label:L(k),ic,action:'a-mode:'+k,active:m===k})),{label:L('account')});
   return `<section class="panel auth-panel">${tabs}<form id="a-auth-form" class="auth-form" novalidate>
    ${m==='signUp'?`<label class="field signup-photo"><span class="field-label">${this.P('photo')}</span>${this.signupAvatar?`<img class="signup-avatar" src="${esc(this.signupAvatar)}" alt="" width="64" height="64">`:''}<input class="input" type="file" name="signup_avatar" accept="image/jpeg,image/png,image/webp"><small class="key-hint">${signupPhotoHelp(this.state)}</small></label>`:''}
-   ${m==='signUp'?['last_name','first_name','nickname'].map((name,i)=>`<label class="field"><span class="field-label">${this.P(['lastName','firstName','nickname'][i])}</span><input class="input" name="${name}" autocomplete="${['family-name','given-name','nickname'][i]}" required maxlength="${name==='nickname'?24:60}" value="${esc(this.signupDraft[name]||'')}"></label>`).join(''):''}
-   <label class="field"><span class="field-label">${L('email')}</span><input class="input" type="email" name="email" autocomplete="email" inputmode="email" required maxlength="254" value="${esc(this.draftEmail||'')}"></label>
+   ${m==='signUp'?`<div class="auth-identity-grid">${['last_name','first_name','nickname'].map((name,i)=>`<label class="field"><span class="field-label">${this.P(['lastName','firstName','nickname'][i])}</span><input class="input" name="${name}" autocomplete="${['family-name','given-name','nickname'][i]}" required maxlength="${name==='nickname'?24:60}" value="${esc(this.signupDraft[name]||'')}"></label>`).join('')}</div>`:''}
+   <label class="field"><span class="field-label">${L('email')}</span><input class="input" type="email" name="email" autocomplete="email" inputmode="email" placeholder="you@example.com" required maxlength="254" value="${esc(this.draftEmail||'')}"></label>
    <p class="key-hint">${this.P('emailHelp')}</p>
-   ${pw?`<label class="field"><span class="field-label">${L('password')}</span><input class="input" type="password" name="password" autocomplete="${m==='signUp'?'new-password':'current-password'}" required minlength="8" maxlength="72">${m==='signUp'?`<small class="key-hint">${L('passwordHint')}</small>`:''}</label>`:''}
-   ${m==='signUp'?`<label class="field"><span class="field-label">${this.P('repeatPassword')}</span><input class="input" type="password" name="password_repeat" autocomplete="new-password" required minlength="8" maxlength="72"></label>`:''}
+   ${pw?this.authPassword('password',L('password'),m==='signUp'?'new-password':'current-password',m==='signUp'?L('passwordHint'):''):''}
+   ${m==='signUp'?this.authPassword('password_repeat',this.P('repeatPassword'),'new-password'):''}
    ${button(L(m==='forgot'?'sendReset':m==='magicLink'?'sendLink':m),{full:true,size:'lg',ic:m==='signUp'?'user-circle':m==='signIn'?'login':'mail',attrs:this.btnBusy('auth')})}
    ${this.confirmationNeeded?button(this.P('resendConfirmation'),{action:'a-resend-confirm',kind:'secondary',type:'button',attrs:this.btnBusy('resend')}):''}
    ${entry?button(L('forgot'),{action:'a-mode:forgot',kind:'ghost',size:'sm',type:'button'}):''}
@@ -96,6 +100,14 @@ export class AccountUI{
 
  async click(action,value){if(!action.startsWith('a-'))return false;const L=k=>this.L(k),sync=this.ctx.sync();
   if(action==='a-mode'){this.mode=value;this.message=null;this.ctx.render();}
+  else if(action==='a-password-toggle'){
+   if(!['password','password_repeat'].includes(value))return true;
+   const form=document.getElementById('a-auth-form'),input=form?.elements.namedItem(value);if(!input)return true;
+   const show=input.type==='password';input.type=show?'text':'password';
+   const control=form.querySelector(`[data-action="a-password-toggle:${value}"]`);
+   control?.setAttribute('aria-pressed',String(show));control?.setAttribute('aria-label',this.state.settings.language==='mn'?(show?'Нууц үг нуух':'Нууц үг харах'):(show?'Hide password':'Show password'));
+   if(control)control.innerHTML=icon(show?'eye-off':'eye');
+  }
   else if(action==='a-resend-confirm'){if(!this.draftEmail){this.say(L('emailInvalid'),'tone-danger');return true;}await this.run('resend',async()=>{await auth.resendConfirmation(this.draftEmail.trim());this.message={text:this.P('confirmationSent'),tone:'tone-mint'};});}
   else if(action==='a-remove-photo'){this.avatarDraft=null;this.ctx.render();}
   else if(action==='a-sync')await this.run('sync',()=>sync.syncNow());

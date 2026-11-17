@@ -13,6 +13,8 @@ test('signed-out actions allow authentication and installation, rejecting learni
  assert.equal(isEntryAction('a-mode','signUp'),true);
  assert.equal(isEntryAction('a-mode','magicLink'),false);
  assert.equal(isEntryAction('pwa-install'),true);
+ assert.equal(isEntryAction('a-password-toggle','password'),true);
+ assert.equal(isEntryAction('a-password-toggle','other-field'),false);
  assert.equal(isEntryForm('settings-form'),false);
  assert.equal(isEntryForm('a-auth-form'),true);
 });
